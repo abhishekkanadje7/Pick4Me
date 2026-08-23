@@ -11,24 +11,6 @@
       <p style="font-size: 0.95rem;">Log in to access your Pick4Me dashboard</p>
     </div>
 
-    <!-- Quick Fill Bar for Presentation Demo -->
-    <div class="demo-accounts-card">
-      <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-dark); display: flex; align-items: center; gap: 0.35rem;">
-        ⚡ Demo Quick-Fill (One-Click Testing)
-      </div>
-      <div class="demo-btn-group">
-        <button type="button" class="btn-demo-quick" onclick="quickFillLogin('customer@pick4me.demo', 'customer123')">
-          👤 Customer
-        </button>
-        <button type="button" class="btn-demo-quick" onclick="quickFillLogin('shopper@pick4me.demo', 'shopper123')">
-          🚴 Shopper
-        </button>
-        <button type="button" class="btn-demo-quick" onclick="quickFillLogin('admin@pick4me.demo', 'admin123')">
-          🛡️ Admin
-        </button>
-      </div>
-    </div>
-
     <form method="POST" action="{{ url_for('login') }}">
       <div class="form-group">
         <label for="login_email" class="form-label">Email Address</label>
