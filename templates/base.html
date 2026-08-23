@@ -3,21 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Pick4Me - Your Community, Your Delivery{% endblock %}</title>
+  <title>{% block title %}Pick4Me — Local Marketplace & Peer Delivery{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
   {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-  <!-- Top Navigation Bar -->
+  <!-- Top Campus Pulse Bar -->
+  <div class="campus-pulse-bar">
+    <div class="container campus-pulse-inner">
+      <div>
+        <span class="pulse-dot"></span>
+        <strong style="color: #F8FAFC;">Campus Network Active</strong> &bull; Commuters & Local Stores Online
+      </div>
+      <div>
+        <span>🛡️ Advance Escrow Protected &bull; 4-Digit Handover OTP</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky Main Navigation Bar -->
   <header class="navbar">
     <div class="container nav-container">
       <a href="{{ url_for('index') }}" class="logo-brand">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Pick4Me Logo" class="logo-icon-svg">
         <div class="logo-text-wrap">
           <div class="logo-title">Pick<span>4Me</span></div>
-          <div class="logo-tagline">Local Marketplace & Peer Delivery</div>
+          <div class="logo-tagline">Local Commerce & Peer Delivery</div>
         </div>
       </a>
 
@@ -33,18 +46,18 @@
         {% if session.get('user_id') %}
           {% if session.get('user_role') == 'customer' %}
             <a href="{{ url_for('customer_dashboard') }}" class="nav-link">Dashboard</a>
-            <a href="{{ url_for('create_custom_request') }}" class="nav-link text-primary font-semibold">⚡ Custom Errand</a>
+            <a href="{{ url_for('create_custom_request') }}" class="nav-link text-primary font-bold">⚡ Custom Errand</a>
             <a href="{{ url_for('orders_list') }}" class="nav-link">My Orders</a>
             <a href="{{ url_for('view_cart') }}" class="nav-link cart-badge-link">
               🛒 Cart <span class="cart-pill-count">{{ cart_count }}</span>
             </a>
           {% elif session.get('user_role') == 'shopper' %}
             <a href="{{ url_for('shopper_dashboard') }}" class="nav-link">Deliveries Board</a>
-            <a href="{{ url_for('merchant_shop_setup') }}" class="nav-link font-semibold text-accent">🏪 My Store & Items</a>
-            <a href="{{ url_for('wallet_dashboard') }}" class="nav-link font-semibold text-primary">💰 Wallet</a>
+            <a href="{{ url_for('merchant_shop_setup') }}" class="nav-link font-bold text-accent">🏪 My Store & Items</a>
+            <a href="{{ url_for('wallet_dashboard') }}" class="nav-link font-bold text-primary">💰 Wallet</a>
             <a href="{{ url_for('orders_list') }}" class="nav-link">History</a>
           {% elif session.get('user_role') == 'admin' %}
-            <a href="{{ url_for('admin_dashboard') }}" class="nav-link font-semibold text-primary">🛡️ Admin Panel</a>
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link font-bold text-primary">🛡️ Admin Panel</a>
             <a href="{{ url_for('orders_list') }}" class="nav-link">All Orders</a>
           {% endif %}
           <a href="{{ url_for('profile') }}" class="nav-link">Profile</a>
@@ -85,9 +98,9 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <div class="logo-title" style="color: #FFF; margin-bottom: 0.5rem;">Pick<span style="color: var(--primary);">4Me</span></div>
-          <p style="color: #CBD5E1; font-weight: 500;">Your Community, Your Delivery</p>
-          <p style="font-size: 0.85rem; margin-top: 0.75rem; color: #94A3B8;">
-            A modern local e-commerce marketplace and crowdsourced peer delivery network.
+          <p style="color: #CBD5E1; font-weight: 500; font-size: 0.9rem;">Your Community, Your Delivery</p>
+          <p style="font-size: 0.82rem; margin-top: 0.75rem; color: #94A3B8;">
+            A bespoke hyperlocal marketplace and crowdsourced peer commute delivery network.
           </p>
         </div>
         <div class="footer-col">
@@ -102,22 +115,22 @@
           <h4>For Shoppers & Merchants</h4>
           <ul class="footer-links">
             <li><a href="{{ url_for('login_shopper') }}">List Your Store</a></li>
-            <li><a href="{{ url_for('login_shopper') }}">Earn on Commutes</a></li>
+            <li><a href="{{ url_for('login_shopper') }}">Earn on Daily Commutes</a></li>
             <li><a href="{{ url_for('register') }}?role=shopper">Join as Merchant / Partner</a></li>
           </ul>
         </div>
         <div class="footer-col">
-          <h4>Platform Trust & Security</h4>
-          <p style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 0.5rem;">
+          <h4>Trust & Security</h4>
+          <p style="font-size: 0.82rem; color: #94A3B8; margin-bottom: 0.5rem;">
             🛡️ Advance Escrow Protected<br>
             🔑 4-Digit Handover OTP<br>
-            ✓ Verified Campus Community
+            ⚡ Dynamic Speed SLA Bonus
           </p>
         </div>
       </div>
       <div class="footer-bottom">
         <p>&copy; {{ current_year }} Pick4Me. All rights reserved.</p>
-        <p>Empowering Local Shops & Peer Commuters</p>
+        <p>Empowering Local Stores & Everyday Commuters</p>
       </div>
     </div>
   </footer>

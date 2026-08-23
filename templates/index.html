@@ -1,92 +1,92 @@
 {% extends "base.html" %}
 
-{% block title %}Pick4Me - Amazon-Style Local Marketplace & Peer Delivery{% endblock %}
+{% block title %}Pick4Me — Local Marketplace & Peer Delivery{% endblock %}
 
 {% block content %}
 <!-- HERO & SEARCH SECTION -->
-<section class="hero-section" style="padding: 3.5rem 0 2.5rem; background: linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 60%, #FFFBEB 100%);">
+<section class="hero-section" style="padding: 4rem 0 3rem; background: linear-gradient(180deg, #F0FDFA 0%, #F8FAFC 100%); border-bottom: 1px solid var(--border-color);">
   <div class="container text-center">
-    <span class="section-subtitle">⚡ Hyperlocal Campus & Community Commerce</span>
-    <h1 style="font-size: 2.75rem; margin-bottom: 1rem;">
-      Shop Local Stores. <br><span class="highlight" style="color: var(--primary);">Delivered by Nearby Peers.</span>
+    <span class="section-subtitle">⚡ Hyperlocal Campus Commerce</span>
+    <h1 style="font-size: 2.85rem; margin-bottom: 1rem; color: #0F172A; font-weight: 800; letter-spacing: -0.03em;">
+      Shop Local Stores. <br><span style="color: var(--primary);">Delivered by Nearby Commuters.</span>
     </h1>
-    <p style="font-size: 1.15rem; max-width: 680px; margin: 0 auto 2rem; color: var(--text-muted);">
-      Order directly from registered campus shops, or have a nearby student commuting your way pick up anything you need.
+    <p style="font-size: 1.12rem; max-width: 640px; margin: 0 auto 2.25rem; color: var(--text-muted); line-height: 1.6;">
+      Order daily essentials directly from registered campus shops, or have a nearby student commuting your way deliver anything you need.
     </p>
 
     <!-- Global Product Search Bar -->
-    <div style="max-width: 640px; margin: 0 auto 2rem;">
-      <form method="GET" action="{{ url_for('products_catalog') }}" style="display: flex; gap: 0.5rem; background: #FFF; padding: 0.5rem; border-radius: var(--radius-full); box-shadow: var(--shadow-lg); border: 1px solid var(--border-color);">
+    <div style="max-width: 620px; margin: 0 auto 1.75rem;">
+      <form method="GET" action="{{ url_for('products_catalog') }}" style="display: flex; gap: 0.5rem; background: #FFFFFF; padding: 0.4rem 0.5rem; border-radius: var(--radius-full); box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
         <input
           type="text"
           name="q"
           class="form-control"
-          placeholder="🔍 Search for notebooks, snacks, medicines, printouts, coffee..."
-          style="border: none; border-radius: var(--radius-full); padding-left: 1.25rem; font-size: 1rem; box-shadow: none;"
+          placeholder="Search notebooks, snacks, lab manuals, medicines..."
+          style="border: none; border-radius: var(--radius-full); padding-left: 1.25rem; font-size: 0.95rem; box-shadow: none;"
         >
-        <button type="submit" class="btn btn-primary" style="border-radius: var(--radius-full); padding: 0.75rem 1.75rem; font-weight: 700;">
+        <button type="submit" class="btn btn-primary" style="border-radius: var(--radius-full); padding: 0.7rem 1.75rem; font-weight: 700;">
           Search
         </button>
       </form>
     </div>
 
     <!-- Quick Category Pills -->
-    <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-      <a href="{{ url_for('products_catalog', category='Stationery') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); background: #FFF;">📚 Stationery & Xerox</a>
-      <a href="{{ url_for('products_catalog', category='Food & Beverages') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); background: #FFF;">🍔 Food & Canteen</a>
-      <a href="{{ url_for('products_catalog', category='Medicines & Pharmacy') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); background: #FFF;">💊 Pharmacy & Health</a>
-      <a href="{{ url_for('products_catalog', category='Groceries & Essentials') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); background: #FFF;">🛒 Daily Essentials</a>
-      <a href="{{ url_for('products_catalog', category='Electronics') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); background: #FFF;">🔌 Tech & Cables</a>
+    <div style="display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 2rem;">
+      <a href="{{ url_for('products_catalog', category='Stationery') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); font-size: 0.8rem;">📚 Stationery & Xerox</a>
+      <a href="{{ url_for('products_catalog', category='Food & Beverages') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); font-size: 0.8rem;">🍔 Food & Canteen</a>
+      <a href="{{ url_for('products_catalog', category='Medicines & Pharmacy') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); font-size: 0.8rem;">💊 Pharmacy & Health</a>
+      <a href="{{ url_for('products_catalog', category='Groceries & Essentials') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); font-size: 0.8rem;">🛒 Daily Essentials</a>
+      <a href="{{ url_for('products_catalog', category='Electronics') }}" class="btn btn-sm btn-outline" style="border-radius: var(--radius-full); font-size: 0.8rem;">🔌 Tech & Cables</a>
     </div>
 
-    <!-- Platform Stats -->
-    <div style="display: flex; justify-content: center; gap: 3rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+    <!-- Key Metrics Stats -->
+    <div style="display: flex; justify-content: center; gap: 3.5rem; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.75rem;">
       <div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">{{ stats.shops }}+</div>
-        <div style="font-size: 0.85rem; color: var(--text-muted);">Campus Stores</div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: var(--primary);">{{ stats.shops }}+</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Campus Stores</div>
       </div>
       <div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-dark);">{{ stats.products }}+</div>
-        <div style="font-size: 0.85rem; color: var(--text-muted);">Products Cataloged</div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent);">{{ stats.products }}+</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Catalog Items</div>
       </div>
       <div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);">{{ stats.completed }}+</div>
-        <div style="font-size: 0.85rem; color: var(--text-muted);">Deliveries Completed</div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-main);">{{ stats.completed }}+</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Completed Deliveries</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- POPULAR PRODUCTS SECTION (AMAZON STYLE) -->
-<section class="section" style="padding: 3rem 0; background: #FFFFFF; border-bottom: 1px solid var(--border-color);">
+<!-- POPULAR PRODUCTS SECTION -->
+<section class="section" style="padding: 3.5rem 0; background: #FFFFFF; border-bottom: 1px solid var(--border-color);">
   <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
       <div>
-        <span class="section-subtitle">Trending On Campus</span>
-        <h2>Popular Products from Local Stores</h2>
+        <span class="section-subtitle">Catalog Highlights</span>
+        <h2 style="margin: 0;">Featured Store Products</h2>
       </div>
       <a href="{{ url_for('products_catalog') }}" class="btn btn-sm btn-outline-primary">View All Products &rarr;</a>
     </div>
 
     {% if featured_products %}
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem;">
       {% for product in featured_products %}
-        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 1.25rem; transition: var(--transition);">
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 1.35rem; transition: var(--transition);">
           <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span class="badge badge-customer" style="font-size: 0.7rem;">{{ product.category }}</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">🏪 {{ product.shop_name }}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+              <span class="badge badge-customer" style="font-size: 0.68rem;">{{ product.category }}</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">🏪 {{ product.shop_name }}</span>
             </div>
 
-            <h3 style="font-size: 1.05rem; margin-bottom: 0.35rem; line-height: 1.3;">{{ product.name }}</h3>
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.35rem; line-height: 1.3;">{{ product.name }}</h3>
             {% if product.description %}
-              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">{{ product.description }}</p>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.85rem;">{{ product.description }}</p>
             {% endif %}
           </div>
 
           <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin: 0.75rem 0; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
-              <div style="font-size: 1.35rem; font-weight: 800; color: var(--text-main);">
+              <div style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: var(--font-mono);">
                 ₹{{ "%.2f"|format(product.price) }}
               </div>
               <span class="badge badge-completed" style="font-size: 0.65rem;">In Stock</span>
@@ -94,7 +94,7 @@
 
             <form method="POST" action="{{ url_for('add_to_cart') }}">
               <input type="hidden" name="product_id" value="{{ product.id }}">
-              <button type="submit" class="btn btn-sm btn-primary btn-block">
+              <button type="submit" class="btn btn-sm btn-primary btn-block" style="font-weight: 600;">
                 🛒 Add to Cart
               </button>
             </form>
@@ -114,10 +114,10 @@
 <!-- LOCAL SHOPS DIRECTORY PREVIEW -->
 <section class="section" style="padding: 3.5rem 0;">
   <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
       <div>
-        <span class="section-subtitle">Trusted Stores</span>
-        <h2>Registered Local Campus Shops</h2>
+        <span class="section-subtitle">Local Businesses</span>
+        <h2 style="margin: 0;">Registered Campus Stores</h2>
       </div>
       <a href="{{ url_for('shops_directory') }}" class="btn btn-sm btn-outline">All Shops &rarr;</a>
     </div>
@@ -144,7 +144,7 @@
           </div>
 
           <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">{{ shop.product_count }} Products</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">{{ shop.product_count }} Items</span>
             <a href="{{ url_for('shop_detail', id=shop.id) }}" class="btn btn-sm btn-outline-primary">Visit Store &rarr;</a>
           </div>
         </div>
@@ -159,32 +159,32 @@
   </div>
 </section>
 
-<!-- DUAL ACTION BANNER: CUSTOM ERRANDS & COMMUTER EARNINGS -->
-<section class="section" style="background: var(--bg-surface); border-top: 1px solid var(--border-color); padding: 3.5rem 0;">
+<!-- DUAL ACTION CARDS: CUSTOM ERRANDS & COMMUTER EARNINGS -->
+<section class="section" style="background: #F1F5F9; border-top: 1px solid var(--border-color); padding: 4rem 0;">
   <div class="container">
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem;">
       
       <!-- Custom Errand Card -->
-      <div class="card" style="border: 2px solid var(--primary-light); padding: 2rem; background: var(--primary-subtle);">
+      <div class="card" style="border: 1px solid var(--border-color); padding: 2rem; background: #FFFFFF; box-shadow: var(--shadow-sm);">
         <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚡</div>
-        <h3 style="font-size: 1.4rem; margin-bottom: 0.5rem; color: var(--primary-dark);">Can't Find It in Stores? Post a Custom Errand</h3>
-        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-          Need a specific printout, canteen combo, or item from an off-campus market? Tell a commuter what to pick up and offer a delivery reward!
+        <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--text-main);">Can't Find It in Stores? Post a Custom Errand</h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5;">
+          Need a specific lab record, off-campus item, or food pack? Post a custom errand request, set your delivery reward, and a commuter will deliver it to your room.
         </p>
         <a href="{{ url_for('create_custom_request') }}" class="btn btn-primary btn-block">
-          Post Custom Shopping Request &rarr;
+          Post Custom Errand Request &rarr;
         </a>
       </div>
 
       <!-- Shopper & Merchant Earnings Card -->
-      <div class="card" style="border: 2px solid var(--accent-light); padding: 2rem; background: var(--accent-subtle);">
+      <div class="card" style="border: 1px solid var(--border-color); padding: 2rem; background: #FFFFFF; box-shadow: var(--shadow-sm);">
         <div style="font-size: 2rem; margin-bottom: 0.5rem;">🚴🏪</div>
-        <h3 style="font-size: 1.4rem; margin-bottom: 0.5rem; color: var(--accent-dark);">Are You Travelling or Own a Shop?</h3>
-        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-          Earn delivery fees on your daily routes, or list your shop to receive orders with advance escrow payment security!
+        <h3 style="font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--text-main);">Commute Regularly or Own a Shop?</h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5;">
+          Earn delivery rewards on your routine campus routes, or list your store catalog to receive orders with advance escrow payment security!
         </p>
         <div style="display: flex; gap: 0.75rem;">
-          <a href="{{ url_for('login_shopper') }}" class="btn btn-accent" style="flex: 1;">Shopper Dashboard</a>
+          <a href="{{ url_for('login_shopper') }}" class="btn btn-accent" style="flex: 1;">Shopper Hub</a>
           <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-outline" style="flex: 1;">Setup Store</a>
         </div>
       </div>
