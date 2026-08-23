@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Profile Settings - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="margin-bottom: 1.75rem;">
+    <h1>👤 Profile & Account Settings</h1>
+    <p>Manage your contact details, delivery address, and payment credentials.</p>
+  </div>
+
+  <div class="card" style="padding: 2.25rem; box-shadow: var(--shadow-md);">
+    
+    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary-light); color: var(--primary-dark); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: 700;">
+        {{ user.name[0]|upper if user else 'U' }}
+      </div>
+      <div>
+        <h3 style="margin: 0 0 0.2rem;">{{ user.name }}</h3>
+        <span class="badge badge-{{ user.role }}">{{ user.role|upper }}</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;">Joined {{ user.created_at[:10] }}</span>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name" class="form-label">Full Name *</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            class="form-control"
+            value="{{ user.name }}"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="email" class="form-label">Email Address (Read-only)</label>
+          <input
+            type="email"
+            id="email"
+            class="form-control"
+            value="{{ user.email }}"
+            disabled
+            style="background: var(--bg-main);"
+          >
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="phone" class="form-label">Phone Number *</label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            class="form-control"
+            value="{{ user.phone }}"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="location" class="form-label">Default Campus / Hostel Location *</label>
+          <input
+            type="text"
+            id="location"
+            name="location"
+            class="form-control"
+            value="{{ user.location }}"
+            required
+          >
+        </div>
+      </div>
+
+      {% if user.role in ('shopper', 'admin') %}
+      <!-- Shopper Payment Details Section -->
+      <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+        <h4 style="font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--accent-dark);">
+          💳 Shopper UPI Payout Settings
+        </h4>
+        <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">
+          Customers will scan or copy these details to pay you for delivered items.
+        </p>
+
+        <div class="form-group">
+          <label for="upi_id" class="form-label">UPI ID / VPA</label>
+          <input
+            type="text"
+            id="upi_id"
+            name="upi_id"
+            class="form-control"
+            placeholder="e.g. yourname@okhdfcbank"
+            value="{{ user.upi_id or '' }}"
+          >
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="qr_code_file" class="form-label">Upload Personal UPI QR Code Image (PNG, JPG, WEBP)</label>
+          <input
+            type="file"
+            id="qr_code_file"
+            name="qr_code_file"
+            class="form-control"
+            accept="image/png, image/jpeg, image/webp"
+          >
+          <div class="form-hint">Upload a screenshot of your personal GPay, PhonePe, or Paytm QR code.</div>
+        </div>
+
+        <!-- Current QR Code Preview -->
+        <div style="margin-top: 1rem;">
+          <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem;">Current / Preview QR Code:</div>
+          {% if user.qr_code %}
+            <img id="qr_preview" src="{{ url_for('static', filename='uploads/' + user.qr_code) }}" alt="Shopper QR Code" style="width: 140px; height: 140px; object-fit: contain; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem; background: #FFF;">
+          {% else %}
+            <img id="qr_preview" src="{{ url_for('static', filename='images/demo_qr.png') }}" alt="Default QR" style="width: 140px; height: 140px; object-fit: contain; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem; background: #FFF;">
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-primary btn-block" style="padding: 0.85rem; margin-top: 1rem;">
+        Save Changes
+      </button>
+    </form>
+
+  </div>
+</div>
+{% endblock %}

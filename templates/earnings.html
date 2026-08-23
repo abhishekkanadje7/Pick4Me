@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Shopper Earnings - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Financial Overview</span>
+      <h1>Shopper Earnings Dashboard</h1>
+      <p>Track all rewards earned from your fulfilled delivery tasks.</p>
+    </div>
+
+    <div>
+      <a href="{{ url_for('profile') }}" class="btn btn-outline">⚙️ Manage Payout UPI ID</a>
+    </div>
+  </div>
+
+  <!-- Earnings Metric Cards -->
+  <div class="stats-grid">
+    <div class="stat-card" style="border-top: 4px solid var(--primary);">
+      <div class="stat-icon stat-icon-green">💰</div>
+      <div class="stat-content">
+        <h3>₹{{ "%.2f"|format(total_cleared) }}</h3>
+        <p>Total Cleared Earnings</p>
+      </div>
+    </div>
+
+    <div class="stat-card" style="border-top: 4px solid var(--accent);">
+      <div class="stat-icon stat-icon-orange">⏳</div>
+      <div class="stat-content">
+        <h3>₹{{ "%.2f"|format(pending_earnings) }}</h3>
+        <p>Pending In-Progress Earnings</p>
+      </div>
+    </div>
+
+    <div class="stat-card" style="border-top: 4px solid #3B82F6;">
+      <div class="stat-icon stat-icon-blue">📦</div>
+      <div class="stat-content">
+        <h3>{{ completed_count }}</h3>
+        <p>Completed Deliveries</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deliveries Breakdown Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">📜 Earnings Breakdown & Task Log</h3>
+      <div style="max-width: 250px;">
+        <input
+          type="text"
+          id="tableSearchInput"
+          class="form-control"
+          placeholder="🔍 Search log..."
+          style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"
+        >
+      </div>
+    </div>
+
+    {% if deliveries %}
+    <div class="table-responsive">
+      <table class="custom-table searchable-table">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Delivered Item</th>
+            <th>Customer</th>
+            <th>Date</th>
+            <th>Reward Earned</th>
+            <th>Payment Status</th>
+            <th>Order Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in deliveries %}
+            <tr>
+              <td><strong>#ORD-{{ item.id }}</strong></td>
+              <td>
+                <div style="font-weight: 700;">{{ item.product_name }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">🏪 {{ item.shop_name }}</div>
+              </td>
+              <td>{{ item.customer_name }}</td>
+              <td style="font-size: 0.85rem; color: var(--text-muted);">
+                {{ item.updated_at[:16] if item.updated_at else item.created_at[:16] }}
+              </td>
+              <td>
+                <span style="font-weight: 800; color: var(--primary); font-size: 1.05rem;">
+                  +₹{{ "%.2f"|format(item.reward) }}
+                </span>
+              </td>
+              <td>
+                <span class="badge {% if item.payment_status == 'Confirmed' %}badge-completed{% else %}badge-pending{% endif %}">
+                  {{ item.payment_status or 'Pending' }}
+                </span>
+              </td>
+              <td>
+                <span class="badge badge-{{ item.status|lower|replace(' ', '-') }}">{{ item.status }}</span>
+              </td>
+              <td>
+                <a href="{{ url_for('order_details', id=item.id) }}" class="btn btn-sm btn-outline-primary">Details</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3rem 1rem;">
+      <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">You haven't completed any deliveries yet.</p>
+      <a href="{{ url_for('available_requests') }}" class="btn btn-primary">Find Available Requests Now</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

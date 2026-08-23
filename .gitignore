@@ -1,0 +1,37 @@
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# SQLite Database & Local Data
+*.db
+*.sqlite3
+instance/
+
+# Operating System & IDE Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment Variables & Secrets
+.env
+.env.*
+*.local
+
+# User Uploads
+static/uploads/*
+!static/uploads/.gitkeep
+!static/uploads/default_qr.png

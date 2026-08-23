@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if role == 'shopper' %}My Deliveries - Pick4Me{% else %}My Orders - Pick4Me{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <span class="badge {% if role == 'shopper' %}badge-shopper{% else %}badge-customer{% endif %}" style="margin-bottom: 0.4rem;">
+        {% if role == 'shopper' %}Shopper Deliveries{% elif role == 'admin' %}All Platform Orders{% else %}Customer Orders{% endif %}
+      </span>
+      <h1>{% if role == 'shopper' %}Delivery History{% else %}Your Orders{% endif %}</h1>
+      <p>Track delivery status, view invoices, and confirm payments.</p>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <a href="{{ url_for('orders_list', status='all') }}" class="btn btn-sm {% if current_filter == 'all' or not current_filter %}btn-primary{% else %}btn-outline{% endif %}">
+        All
+      </a>
+      <a href="{{ url_for('orders_list', status='active') }}" class="btn btn-sm {% if current_filter == 'active' %}btn-primary{% else %}btn-outline{% endif %}">
+        Active
+      </a>
+      <a href="{{ url_for('orders_list', status='completed') }}" class="btn btn-sm {% if current_filter == 'completed' %}btn-primary{% else %}btn-outline{% endif %}">
+        Completed
+      </a>
+      <a href="{{ url_for('orders_list', status='cancelled') }}" class="btn btn-sm {% if current_filter == 'cancelled' %}btn-primary{% else %}btn-outline{% endif %}">
+        Cancelled
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    {% if orders %}
+    <div class="table-responsive">
+      <table class="custom-table searchable-table">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Product & Shop</th>
+            <th>{% if role == 'shopper' %}Customer{% else %}Shopper{% endif %}</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+            <tr>
+              <td><strong>#ORD-{{ order.id }}</strong></td>
+              <td>
+                <div style="font-weight: 700;">{{ order.product_name }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">🏪 {{ order.shop_name }}</div>
+              </td>
+              <td>
+                <div style="font-weight: 600;">{{ order.counterpart_name }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ order.counterpart_phone or '' }}</div>
+              </td>
+              <td style="font-size: 0.85rem; color: var(--text-muted);">
+                {{ order.updated_at[:16] if order.updated_at else order.created_at[:16] }}
+              </td>
+              <td>
+                {% if role == 'shopper' %}
+                  <strong style="color: var(--primary);">+₹{{ "%.2f"|format(order.reward) }}</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Total: ₹{{ "%.2f"|format(order.total_amount) }}</div>
+                {% else %}
+                  <strong>₹{{ "%.2f"|format(order.total_amount) }}</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Reward: ₹{{ "%.2f"|format(order.reward) }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge badge-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
+              </td>
+              <td>
+                <a href="{{ url_for('order_details', id=order.id) }}" class="btn btn-sm btn-outline-primary">
+                  View &rarr;
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3.5rem 1.5rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📦</div>
+      <h3>No orders found</h3>
+      <p style="color: var(--text-muted);">There are no orders matching the selected filter.</p>
+      {% if role == 'customer' %}
+        <a href="{{ url_for('create_request') }}" class="btn btn-primary" style="margin-top: 0.5rem;">Post a Shopping Request</a>
+      {% elif role == 'shopper' %}
+        <a href="{{ url_for('available_requests') }}" class="btn btn-primary" style="margin-top: 0.5rem;">Find Available Requests</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

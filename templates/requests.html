@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if view_mode == 'customer' %}My Requests - Pick4Me{% else %}Available Requests - Pick4Me{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      {% if view_mode == 'customer' %}
+        <span class="badge badge-customer" style="margin-bottom: 0.4rem;">Customer View</span>
+        <h1>My Shopping Requests</h1>
+        <p>Track the status of all requests you have posted.</p>
+      {% else %}
+        <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Shopper Marketplace</span>
+        <h1>Available Shopping Requests</h1>
+        <p>Find tasks near you, pick up items, and earn cash rewards.</p>
+      {% endif %}
+    </div>
+
+    <div>
+      {% if session.get('user_role') == 'customer' %}
+        <a href="{{ url_for('create_request') }}" class="btn btn-primary">+ Post New Request</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
+    <form method="GET" action="{{ request.path }}" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+      
+      <div style="flex: 1; min-width: 240px;">
+        <input
+          type="text"
+          name="q"
+          class="form-control"
+          placeholder="🔍 Search product, shop or address..."
+          value="{{ current_query or '' }}"
+        >
+      </div>
+
+      {% if categories %}
+      <div style="min-width: 180px;">
+        <select name="category" class="form-control">
+          <option value="all">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <div style="min-width: 150px;">
+        <select name="status" class="form-control">
+          <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All Statuses</option>
+          <option value="Pending" {% if current_filter == 'Pending' %}selected{% endif %}>Pending</option>
+          <option value="Accepted" {% if current_filter == 'Accepted' %}selected{% endif %}>Accepted</option>
+          <option value="Completed" {% if current_filter == 'Completed' %}selected{% endif %}>Completed</option>
+          <option value="Cancelled" {% if current_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Filter</button>
+      {% if current_query or current_category != 'all' or (current_filter and current_filter != 'Pending' and view_mode != 'customer') %}
+        <a href="{{ request.path }}" class="btn btn-outline">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Requests Grid / List -->
+  {% if requests %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+    {% for req in requests %}
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid {% if req.status == 'Pending' %}var(--warning){% elif req.status == 'Completed' %}var(--primary){% elif req.status == 'Accepted' %}var(--info){% else %}var(--border-color){% endif %};">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+            <span class="badge badge-{{ req.status|lower|replace(' ', '-') }}">{{ req.status }}</span>
+            <span style="font-weight: 800; font-size: 1.25rem; color: var(--primary);">
+              +₹{{ "%.0f"|format(req.reward) }} <span style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted);">Reward</span>
+            </span>
+          </div>
+
+          <h3 style="margin-bottom: 0.5rem; font-size: 1.2rem;">{{ req.product_name }}</h3>
+          
+          <div style="background: var(--bg-main); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; font-size: 0.88rem;">
+            <div style="margin-bottom: 0.35rem;">
+              <strong>Category:</strong> {{ req.category }} &nbsp;|&nbsp; <strong>Qty:</strong> {{ req.quantity }}
+            </div>
+            <div style="margin-bottom: 0.35rem;">
+              🏪 <strong>Shop:</strong> {{ req.shop_name }} <span style="color: var(--text-muted);">({{ req.shop_address }})</span>
+            </div>
+            <div>
+              📍 <strong>Deliver to:</strong> {{ req.delivery_address }}
+            </div>
+          </div>
+
+          {% if req.description %}
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem; font-style: italic;">
+              "{{ req.description }}"
+            </p>
+          {% endif %}
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-light); margin-bottom: 1rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+            <span>Est. Item Price: ₹{{ "%.2f"|format(req.estimated_price) }}</span>
+            <span>{{ req.created_at[:16] }}</span>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <a href="{{ url_for('request_details', id=req.id) }}" class="btn btn-sm btn-primary btn-block">
+              View Full Details &rarr;
+            </a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card text-center" style="padding: 4rem 1.5rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+    <h3>No shopping requests found</h3>
+    <p>Try adjusting your search filters or check back later.</p>
+    {% if session.get('user_role') == 'customer' %}
+      <a href="{{ url_for('create_request') }}" class="btn btn-primary" style="margin-top: 0.5rem;">Create a New Request</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

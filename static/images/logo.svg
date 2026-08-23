@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="90" fill="#ECFDF5" />
+
+  <!-- Shopping Bag Body -->
+  <g filter="url(#dropShadow)">
+    <rect x="52" y="75" width="96" height="85" rx="14" fill="url(#primaryGrad)" />
+    
+    <!-- Bag Fold Highlight -->
+    <path d="M 52 90 L 148 90" stroke="#047857" stroke-width="2" stroke-dasharray="4 3" opacity="0.6"/>
+
+    <!-- Bag Handle -->
+    <path d="M 75 75 V 50 C 75 36, 125 36, 125 50 V 75" fill="none" stroke="url(#accentGrad)" stroke-width="8" stroke-linecap="round"/>
+
+    <!-- Location Pin Badge on the Bag -->
+    <g transform="translate(100, 115)">
+      <!-- Outer Pin -->
+      <path d="M 0 -22 C -13 -22, -22 -13, -22 0 C -22 14, 0 32, 0 32 C 0 32, 22 14, 22 0 C 22 -13, 13 -22, 0 -22 Z" fill="#FFFFFF" />
+      <path d="M 0 -19 C -10 -19, -18 -11, -18 0 C -18 11, 0 26, 0 26 C 0 26, 18 11, 18 0 C 18 -11, 10 -19, 0 -19 Z" fill="url(#accentGrad)" />
+      <!-- Pin Center Dot -->
+      <circle cx="0" cy="-2" r="6" fill="#FFFFFF" />
+    </g>
+
+    <!-- Speed / Motion lines -->
+    <path d="M 32 95 L 44 95" stroke="#10B981" stroke-width="4" stroke-linecap="round" />
+    <path d="M 26 112 L 42 112" stroke="#10B981" stroke-width="4" stroke-linecap="round" />
+    <path d="M 34 130 L 44 130" stroke="#10B981" stroke-width="4" stroke-linecap="round" />
+  </g>
+</svg>

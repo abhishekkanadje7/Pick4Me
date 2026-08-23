@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ error_code or '404' }} - Page Not Found - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container container-narrow text-center" style="padding: 5rem 1.5rem 6rem;">
+  <div style="font-size: 5rem; font-weight: 800; color: var(--primary); line-height: 1; margin-bottom: 1rem;">
+    {{ error_code or '404' }}
+  </div>
+  <h2 style="font-size: 1.85rem; margin-bottom: 0.75rem;">
+    {{ error_message or 'Oops! Page Not Found' }}
+  </h2>
+  <p style="font-size: 1.05rem; color: var(--text-muted); max-width: 480px; margin: 0 auto 2rem;">
+    The page or shopping request you are looking for might have been moved, removed, or is temporarily unavailable.
+  </p>
+  <div style="display: flex; gap: 1rem; justify-content: center;">
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Return to Home</a>
+    <a href="{{ url_for('available_requests') }}" class="btn btn-outline">Browse Requests</a>
+  </div>
+</div>
+{% endblock %}

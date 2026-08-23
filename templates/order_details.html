@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Order #ORD-{{ order.id }} - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="margin-bottom: 1.5rem;">
+    <a href="{{ url_for('orders_list') }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Back to Orders</a>
+  </div>
+
+  <div class="card" style="padding: 2.25rem; box-shadow: var(--shadow-lg);">
+    
+    <!-- Top Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">ORDER #ORD-{{ order.id }}</span>
+          <span class="badge badge-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
+        </div>
+        <h1 style="font-size: 1.75rem; margin: 0;">{{ order.product_name }}</h1>
+      </div>
+
+      <div style="text-align: right;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Order Value</div>
+        <div style="font-size: 1.85rem; font-weight: 800; color: var(--primary-dark);">
+          ₹{{ "%.2f"|format(order.total_amount) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRESS TRACKER TIMELINE -->
+    {% set steps = ['Accepted', 'Purchased', 'Out for Delivery', 'Delivered', 'Completed'] %}
+    {% set step_ranks = {'Pending': 0, 'Accepted': 1, 'Purchased': 2, 'Out for Delivery': 3, 'Delivered': 4, 'Completed': 5} %}
+    {% set current_rank = step_ranks.get(order.status, 1) %}
+
+    <div class="order-tracker">
+      <!-- Calculated progress bar width in percentage -->
+      {% set pct = ((current_rank - 1) / 4 * 100)|int %}
+      <div class="tracker-progress-line" style="width: {% if pct > 0 %}{{ pct }}%{% else %}0%{% endif %};"></div>
+
+      <div class="tracker-step {% if current_rank >= 1 %}completed{% endif %}">
+        <div class="tracker-dot">✓</div>
+        <div class="tracker-title">Accepted</div>
+      </div>
+
+      <div class="tracker-step {% if current_rank >= 2 %}completed{% elif current_rank == 1 %}active{% endif %}">
+        <div class="tracker-dot">{% if current_rank >= 2 %}✓{% else %}2{% endif %}</div>
+        <div class="tracker-title">Purchased</div>
+      </div>
+
+      <div class="tracker-step {% if current_rank >= 3 %}completed{% elif current_rank == 2 %}active{% endif %}">
+        <div class="tracker-dot">{% if current_rank >= 3 %}✓{% else %}3{% endif %}</div>
+        <div class="tracker-title">Out for Delivery</div>
+      </div>
+
+      <div class="tracker-step {% if current_rank >= 4 %}completed{% elif current_rank == 3 %}active{% endif %}">
+        <div class="tracker-dot">{% if current_rank >= 4 %}✓{% else %}4{% endif %}</div>
+        <div class="tracker-title">Delivered</div>
+      </div>
+
+      <div class="tracker-step {% if current_rank >= 5 %}completed{% elif current_rank == 4 %}active{% endif %}">
+        <div class="tracker-dot">{% if current_rank >= 5 %}✓{% else %}5{% endif %}</div>
+        <div class="tracker-title">Completed</div>
+      </div>
+    </div>
+
+    <!-- INTERACTIVE ACTION BAR -->
+    
+    <!-- 1. Shopper Step-by-Step Action Button -->
+    {% if session.get('user_id') == order.shopper_id or session.get('user_role') == 'admin' %}
+      {% if next_step %}
+        <div style="background: var(--bg-main); border: 2px dashed var(--primary); border-radius: var(--radius-md); padding: 1.5rem; margin: 1.5rem 0; text-align: center;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">🚴 Shopper Action Required</h3>
+          <p style="font-size: 0.9rem; margin-bottom: 1rem;">Update status when you reach the next milestone:</p>
+          <form method="POST" action="{{ url_for('update_order_status', id=order.id) }}">
+            <input type="hidden" name="status" value="{{ next_step.action }}">
+            <button type="submit" class="btn btn-lg {{ next_step.class }}" style="padding: 0.85rem 2rem;">
+              {{ next_step.label }} &rarr;
+            </button>
+          </form>
+        </div>
+      {% elif order.status == 'Delivered' %}
+        <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: var(--radius-md); padding: 1.25rem; margin: 1.5rem 0; text-align: center;">
+          <div style="font-weight: 700; color: #065F46; font-size: 1.05rem;">🎉 Marked as Delivered!</div>
+          <p style="font-size: 0.9rem; color: #047857; margin: 0.35rem 0 0;">
+            Waiting for customer (<strong>{{ order.customer_name }}</strong>) to verify items and click "Confirm Delivery".
+          </p>
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <!-- 2. Customer Delivery Confirmation Button -->
+    {% if session.get('user_id') == order.customer_id or session.get('user_role') == 'admin' %}
+      {% if order.status == 'Delivered' %}
+        <div style="background: #FFFBEB; border: 2px solid var(--accent); border-radius: var(--radius-md); padding: 1.5rem; margin: 1.5rem 0; text-align: center;">
+          <h3 style="color: var(--accent-dark); font-size: 1.2rem; margin-bottom: 0.5rem;">📦 Your Order Has Been Delivered!</h3>
+          <p style="font-size: 0.95rem; margin-bottom: 1.25rem;">
+            Please verify you received your <strong>{{ order.product_name }}</strong>. Once confirmed, the order will be marked Completed.
+          </p>
+          <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <form method="POST" action="{{ url_for('confirm_delivery', id=order.id) }}">
+              <button type="submit" class="btn btn-lg btn-primary" style="padding: 0.85rem 2rem;">
+                ✓ Confirm Delivery (Order Received)
+              </button>
+            </form>
+            <a href="{{ url_for('payment_page', id=order.id) }}" class="btn btn-lg btn-accent">
+              💳 Pay via UPI QR (₹{{ "%.2f"|format(order.total_amount) }})
+            </a>
+          </div>
+        </div>
+      {% elif order.status == 'Completed' %}
+        <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: var(--radius-md); padding: 1.25rem; margin: 1.5rem 0; text-align: center;">
+          <div style="font-weight: 800; color: #065F46; font-size: 1.15rem;">✅ Order Completed Successfully!</div>
+          <p style="font-size: 0.9rem; color: #047857; margin: 0.35rem 0 0;">
+            Thank you for using Pick4Me. Delivery completed and payment verified.
+          </p>
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <!-- Order Item & Party Details -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-top: 1.5rem;">
+      
+      <!-- Shop & Delivery Info -->
+      <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+        <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">🏪 Shop Information</h4>
+        <div style="font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">{{ order.shop_name }}</div>
+        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">{{ order.shop_address }}</div>
+
+        <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">📍 Delivery Address</h4>
+        <div style="font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">{{ order.delivery_address }}</div>
+        <div style="font-size: 0.9rem; color: var(--text-muted);">Phone: {{ order.customer_contact_phone }}</div>
+      </div>
+
+      <!-- Shopper Details & Payment Summary -->
+      <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+        <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">🚴 Assigned Shopper</h4>
+        <div style="font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">{{ order.shopper_name }}</div>
+        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.25rem;">📞 {{ order.shopper_phone }}</div>
+        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">✉️ {{ order.shopper_email }}</div>
+
+        <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">💳 Payment Breakdown</h4>
+        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.25rem;">
+          <span>Product Amount:</span>
+          <span>₹{{ "%.2f"|format(order.product_amount) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.5rem;">
+          <span>Shopper Reward:</span>
+          <span style="color: var(--primary); font-weight: 700;">+₹{{ "%.2f"|format(order.reward) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 1rem; font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+          <span>Total Amount:</span>
+          <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Quick UPI Pay Section Box -->
+    <div style="margin-top: 1.75rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-weight: 700;">UPI Payment Status:</span>
+          <span class="badge {% if payment and payment.status == 'Confirmed' %}badge-completed{% else %}badge-pending{% endif %}">
+            {{ payment.status if payment else 'Pending' }}
+          </span>
+          <span class="badge badge-pending" style="font-size: 0.65rem;">Demo Payment</span>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Shopper UPI: <strong>{{ order.shopper_upi or 'rahul.verma@okhdfcbank' }}</strong>
+        </div>
+      </div>
+
+      <div>
+        <a href="{{ url_for('payment_page', id=order.id) }}" class="btn btn-outline-primary">
+          📱 Open Demo UPI QR Screen &rarr;
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

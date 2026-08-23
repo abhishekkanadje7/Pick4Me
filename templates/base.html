@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Pick4Me - Your Community, Your Delivery{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="{{ url_for('index') }}" class="logo-brand">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Pick4Me Logo" class="logo-icon-svg">
+        <div class="logo-text-wrap">
+          <div class="logo-title">Pick<span>4Me</span></div>
+          <div class="logo-tagline">Your Community, Your Delivery</div>
+        </div>
+      </a>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+        ☰
+      </button>
+
+      <nav class="nav-menu" id="navMenu">
+        <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+        <a href="{{ url_for('index') }}#how-it-works" class="nav-link">How It Works</a>
+        <a href="{{ url_for('index') }}#about" class="nav-link">About</a>
+        
+        {% if session.get('user_id') %}
+          {% if session.get('user_role') == 'customer' %}
+            <a href="{{ url_for('customer_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('create_request') }}" class="nav-link text-primary font-semibold">+ New Request</a>
+            <a href="{{ url_for('orders_list') }}" class="nav-link">My Orders</a>
+          {% elif session.get('user_role') == 'shopper' %}
+            <a href="{{ url_for('shopper_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('available_requests') }}" class="nav-link">Find Requests</a>
+            <a href="{{ url_for('orders_list') }}" class="nav-link">Deliveries</a>
+            <a href="{{ url_for('shopper_earnings') }}" class="nav-link">Earnings</a>
+          {% elif session.get('user_role') == 'admin' %}
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link font-semibold text-primary">Admin Panel</a>
+            <a href="{{ url_for('available_requests') }}" class="nav-link">All Requests</a>
+            <a href="{{ url_for('orders_list') }}" class="nav-link">All Orders</a>
+          {% endif %}
+          <a href="{{ url_for('profile') }}" class="nav-link">Profile</a>
+          <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline">Logout ({{ session.get('user_name', 'User').split(' ')[0] }})</a>
+        {% else %}
+          <a href="{{ url_for('index') }}#for-customers" class="nav-link">For Customers</a>
+          <a href="{{ url_for('index') }}#for-shoppers" class="nav-link">For Shoppers</a>
+          <div class="nav-actions">
+            <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline">Login</a>
+            <a href="{{ url_for('register') }}" class="btn btn-sm btn-primary">Get Started</a>
+          </div>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <!-- Flash Message Container -->
+  <div class="container flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            <span>{{ message }}</span>
+            <button class="alert-close" aria-label="Dismiss alert">&times;</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="logo-title" style="color: #FFF; margin-bottom: 0.5rem;">Pick<span style="color: var(--primary);">4Me</span></div>
+          <p style="color: #CBD5E1; font-weight: 500;">Your Community, Your Delivery</p>
+          <p style="font-size: 0.85rem; margin-top: 0.75rem; color: #94A3B8;">
+            A local peer-to-peer delivery platform designed for college campuses, hostels, and residential communities.
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('index') }}">Home</a></li>
+            <li><a href="{{ url_for('index') }}#how-it-works">How It Works</a></li>
+            <li><a href="{{ url_for('index') }}#about">About Pick4Me</a></li>
+            <li><a href="{{ url_for('available_requests') }}">Browse Requests</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>For Users</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('register') }}">Join as Customer</a></li>
+            <li><a href="{{ url_for('register') }}">Become a Shopper</a></li>
+            <li><a href="{{ url_for('login') }}">Account Login</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Demo Info</h4>
+          <p style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 0.5rem;">
+            College Mini-Project MVP Demo
+          </p>
+          <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+            <span class="badge badge-pending" style="width: fit-content;">Flask + SQLite</span>
+            <span class="badge badge-accepted" style="width: fit-content;">Demo UPI Enabled</span>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; {{ current_year }} Pick4Me. All rights reserved.</p>
+        <p>Built with ❤️ for Campus & Community Commerce</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Core JavaScript -->
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

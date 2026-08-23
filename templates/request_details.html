@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Request #{{ req.id }} - {{ req.product_name }} - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="margin-bottom: 1.5rem;">
+    <a href="javascript:history.back()" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Back</a>
+  </div>
+
+  <div class="card" style="padding: 2.25rem; box-shadow: var(--shadow-md);">
+    
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+          <span class="badge badge-{{ req.status|lower|replace(' ', '-') }}">{{ req.status }}</span>
+          <span class="badge badge-customer">{{ req.category }}</span>
+          <span style="font-size: 0.85rem; color: var(--text-light);">Request #{{ req.id }}</span>
+        </div>
+        <h1 style="font-size: 1.85rem; margin: 0;">{{ req.product_name }}</h1>
+      </div>
+
+      <div style="text-align: right;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Shopper Reward</div>
+        <div style="font-size: 2rem; font-weight: 800; color: var(--primary);">
+          +₹{{ "%.2f"|format(req.reward) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Product & Pricing Breakdown -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+      <div style="background: var(--bg-main); padding: 1rem; border-radius: var(--radius-md);">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">ESTIMATED ITEM PRICE</div>
+        <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">₹{{ "%.2f"|format(req.estimated_price) }}</div>
+      </div>
+
+      <div style="background: var(--bg-main); padding: 1rem; border-radius: var(--radius-md);">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">QUANTITY REQUESTED</div>
+        <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">{{ req.quantity }} Units</div>
+      </div>
+
+      <div style="background: var(--primary-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--primary-light);">
+        <div style="font-size: 0.8rem; color: var(--primary-dark); font-weight: 700;">TOTAL ESTIMATED PAYOUT</div>
+        <div style="font-size: 1.25rem; font-weight: 800; color: var(--primary-dark);">₹{{ "%.2f"|format(req.estimated_price + req.reward) }}</div>
+      </div>
+    </div>
+
+    <!-- Details Sections -->
+    <div style="display: flex; flex-direction: column; gap: 1.25rem; margin-bottom: 2rem;">
+      
+      {% if req.description %}
+      <div>
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.35rem; color: var(--text-muted);">Product Specifications</h4>
+        <p style="margin: 0; background: var(--bg-main); padding: 0.85rem; border-radius: var(--radius-sm); color: var(--text-main);">
+          {{ req.description }}
+        </p>
+      </div>
+      {% endif %}
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem;">
+        <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.1rem;">
+          <h4 style="font-size: 0.95rem; color: var(--primary-dark); margin-bottom: 0.5rem;">🏪 Shop Location</h4>
+          <p style="margin: 0 0 0.25rem; font-weight: 700; color: var(--text-main);">{{ req.shop_name }}</p>
+          <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">{{ req.shop_address }}</p>
+        </div>
+
+        <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.1rem;">
+          <h4 style="font-size: 0.95rem; color: var(--accent-dark); margin-bottom: 0.5rem;">📍 Delivery Destination</h4>
+          <p style="margin: 0 0 0.25rem; font-weight: 700; color: var(--text-main);">{{ req.delivery_address }}</p>
+          <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Contact: {{ req.phone }}</p>
+        </div>
+      </div>
+
+      {% if req.instructions %}
+      <div>
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.35rem; color: var(--text-muted);">Special Instructions</h4>
+        <p style="margin: 0; background: #FFFBEB; border: 1px solid #FDE68A; padding: 0.85rem; border-radius: var(--radius-sm); color: #92400E; font-size: 0.9rem;">
+          💬 {{ req.instructions }}
+        </p>
+      </div>
+      {% endif %}
+
+      <div style="font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+        Posted by <strong>{{ req.customer_name }}</strong> on {{ req.created_at }}
+      </div>
+    </div>
+
+    <!-- Action Section -->
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+      
+      {% if req.status == 'Pending' %}
+        {% if session.get('user_role') == 'shopper' or session.get('user_role') == 'admin' %}
+          <form method="POST" action="{{ url_for('accept_request', id=req.id) }}" onsubmit="return confirm('Are you sure you want to accept this request and deliver this product?');">
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
+              🚴 Accept This Request & Start Delivery (+₹{{ "%.0f"|format(req.reward) }})
+            </button>
+          </form>
+        {% elif session.get('user_id') == req.customer_id %}
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div style="color: var(--accent-dark); font-weight: 600;">
+              ⏳ Waiting for a nearby shopper to accept your request...
+            </div>
+            <form method="POST" action="{{ url_for('cancel_request', id=req.id) }}" onsubmit="return confirm('Are you sure you want to cancel this request?');">
+              <button type="submit" class="btn btn-sm btn-danger">Cancel Request</button>
+            </form>
+          </div>
+        {% else %}
+          <div style="text-align: center;">
+            <p>Want to earn ₹{{ "%.0f"|format(req.reward) }} by picking up this item?</p>
+            <a href="{{ url_for('register') }}?role=shopper" class="btn btn-accent">Register as a Shopper to Accept</a>
+          </div>
+        {% endif %}
+
+      {% else %}
+        <!-- Request is already accepted / processed -->
+        <div style="background: var(--bg-main); padding: 1.25rem; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <div style="font-weight: 700; color: var(--text-main);">Order In Progress</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+              Assigned Shopper: <strong>{{ req.shopper_name or 'Assigned' }}</strong>
+            </div>
+          </div>
+          {% if order %}
+            <a href="{{ url_for('order_details', id=order.id) }}" class="btn btn-primary">
+              View Order Tracking &rarr;
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}

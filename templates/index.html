@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Pick4Me - Your Community, Your Delivery{% endblock %}
+
+{% block content %}
+<!-- HERO SECTION -->
+<section class="hero-section">
+  <div class="container hero-grid">
+    <div class="hero-content">
+      <span class="section-subtitle">⚡ Hyperlocal Community Convenience</span>
+      <h1>Your Community, <br><span class="highlight">Your Delivery.</span></h1>
+      <p>
+        Need something from a nearby shop? Let a nearby shopper pick it up and deliver it to you.
+        Pick4Me connects people who need products with people who are already nearby and willing to help.
+      </p>
+      
+      <div class="hero-buttons">
+        {% if session.get('user_id') %}
+          {% if session.get('user_role') == 'customer' %}
+            <a href="{{ url_for('create_request') }}" class="btn btn-lg btn-primary">🛍️ Create New Request</a>
+            <a href="{{ url_for('customer_dashboard') }}" class="btn btn-lg btn-outline">My Dashboard</a>
+          {% else %}
+            <a href="{{ url_for('available_requests') }}" class="btn btn-lg btn-primary">🔍 Find Available Requests</a>
+            <a href="{{ url_for('shopper_dashboard') }}" class="btn btn-lg btn-outline">Shopper Dashboard</a>
+          {% endif %}
+        {% else %}
+          <a href="{{ url_for('register') }}?role=customer" class="btn btn-lg btn-primary">🛍️ Request a Product</a>
+          <a href="{{ url_for('register') }}?role=shopper" class="btn btn-lg btn-accent">🚴 Become a Shopper</a>
+        {% endif %}
+      </div>
+
+      <!-- Quick Platform Stats -->
+      <div style="display: flex; gap: 2rem; margin-top: 2.5rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+        <div>
+          <div style="font-size: 1.6rem; font-weight: 800; color: var(--primary);">{{ stats.requests }}+</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Requests Posted</div>
+        </div>
+        <div>
+          <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent-dark);">{{ stats.completed }}+</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Completed Deliveries</div>
+        </div>
+        <div>
+          <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-main);">{{ stats.shoppers }}+</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Active Shoppers</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Flow Card -->
+    <div class="hero-visual-card">
+      <h3 style="margin-bottom: 1.25rem; font-size: 1.15rem; color: var(--text-main); text-align: center;">
+        How The Magic Happens
+      </h3>
+
+      <div class="flow-step-item">
+        <div class="flow-step-number">1</div>
+        <div>
+          <div style="font-size: 0.95rem; font-weight: 700;">Customer</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400;">Posts what they need & offers a reward</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; color: var(--primary); font-weight: bold; margin: -0.25rem 0;">↓</div>
+
+      <div class="flow-step-item">
+        <div class="flow-step-number" style="background: var(--accent);">2</div>
+        <div>
+          <div style="font-size: 0.95rem; font-weight: 700;">Local Shop</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400;">Stationery, pharmacy, snacks or groceries</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; color: var(--primary); font-weight: bold; margin: -0.25rem 0;">↓</div>
+
+      <div class="flow-step-item">
+        <div class="flow-step-number">3</div>
+        <div>
+          <div style="font-size: 0.95rem; font-weight: 700;">Shopper</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400;">Buys the product & delivers to the doorstep</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; color: var(--primary); font-weight: bold; margin: -0.25rem 0;">↓</div>
+
+      <div class="flow-step-item" style="background: var(--primary-subtle); border: 1px solid var(--primary-light);">
+        <div class="flow-step-number" style="background: var(--primary-dark);">4</div>
+        <div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: var(--primary-dark);">Customer Confirms & Pays</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400;">Shopper gets paid the product cost + reward</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE DEMO REQUESTS FEED -->
+{% if recent_requests %}
+<section class="section" style="background: #FFFFFF; border-bottom: 1px solid var(--border-color); padding: 3rem 0;">
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <div>
+        <span class="section-subtitle">Live Campus Feed</span>
+        <h2>Recent Shopping Requests</h2>
+      </div>
+      <a href="{{ url_for('available_requests') }}" class="btn btn-sm btn-outline-primary">View All Available Requests &rarr;</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem;">
+      {% for req in recent_requests %}
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+              <span class="badge badge-pending">{{ req.category }}</span>
+              <span style="font-weight: 800; color: var(--primary); font-size: 1.1rem;">+₹{{ "%.0f"|format(req.reward) }} Reward</span>
+            </div>
+            <h4 style="margin-bottom: 0.35rem; color: var(--text-main);">{{ req.product_name }}</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+              🏪 <strong>Shop:</strong> {{ req.shop_name }}
+            </p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              📍 <strong>Deliver To:</strong> {{ req.delivery_address }}
+            </p>
+          </div>
+          <a href="{{ url_for('request_details', id=req.id) }}" class="btn btn-sm btn-outline-primary btn-block">View Details</a>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- HOW IT WORKS SECTION -->
+<section id="how-it-works" class="section">
+  <div class="container">
+    <div class="section-title-wrap">
+      <span class="section-subtitle">Step-by-Step Flow</span>
+      <h2>How Pick4Me Works</h2>
+      <p>A simple 4-step process designed for fast, trusted and hassle-free local peer delivery.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📝</div>
+        <h3>1. Create a Request</h3>
+        <p>
+          Tell us what product you need, specify the preferred shop name, destination address, estimated price, and the delivery reward.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">👀</div>
+        <h3>2. Find a Shopper</h3>
+        <p>
+          Nearby students and community members browsing available requests can claim your order with a single click.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🛒</div>
+        <h3>3. Shopper Picks It Up</h3>
+        <p>
+          The shopper visits the shop, purchases your item, and updates the live delivery progress on the platform.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📦</div>
+        <h3>4. Get It Delivered</h3>
+        <p>
+          The shopper delivers the product to your door. You inspect the item, confirm delivery, and pay easily via demo UPI QR!
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY PICK4ME SECTION -->
+<section class="section" style="background: var(--bg-surface); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+  <div class="container">
+    <div class="section-title-wrap">
+      <span class="section-subtitle">Key Advantages</span>
+      <h2>Why Choose Pick4Me?</h2>
+      <p>Bringing community members together for shared convenience and local empowerment.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card" style="border-left: 4px solid var(--primary);">
+        <div class="feature-icon" style="background: var(--primary-light);">⏱️</div>
+        <h3>Save Time</h3>
+        <p>
+          Customers don't need to make an extra trip for small purchases like stationery, medicine, snacks or printouts.
+        </p>
+      </div>
+
+      <div class="feature-card" style="border-left: 4px solid var(--accent);">
+        <div class="feature-icon" style="background: var(--accent-light);">💰</div>
+        <h3>Earn While You Help</h3>
+        <p>
+          Shoppers can earn instant rewards while running their own daily errands or helping people nearby.
+        </p>
+      </div>
+
+      <div class="feature-card" style="border-left: 4px solid #3B82F6;">
+        <div class="feature-icon" style="background: #DBEAFE;">🤝</div>
+        <h3>Support Local Community</h3>
+        <p>
+          Connect people and local shopping needs within the same campus or neighbourhood, fostering strong community bonds.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOR CUSTOMERS & FOR SHOPPERS SPLIT SECTION -->
+<section class="section" id="for-customers">
+  <div class="container">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem;">
+      <!-- Customer Box -->
+      <div class="card" style="border: 2px solid var(--primary-light); padding: 2.25rem;">
+        <span class="badge badge-customer" style="margin-bottom: 1rem;">For Customers</span>
+        <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Never Walk in the Sun for Small Errands</h3>
+        <ul style="list-style: none; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+          <li>✅ Post requests for anything: books, groceries, snacks, printouts</li>
+          <li>✅ Set your own custom delivery reward</li>
+          <li>✅ Real-time step-by-step progress tracking</li>
+          <li>✅ Safe delivery confirmation before order completion</li>
+        </ul>
+        <a href="{{ url_for('register') }}?role=customer" class="btn btn-primary btn-block">Sign Up as Customer</a>
+      </div>
+
+      <!-- Shopper Box -->
+      <div class="card" id="for-shoppers" style="border: 2px solid var(--accent-light); padding: 2.25rem;">
+        <span class="badge badge-shopper" style="margin-bottom: 1rem;">For Shoppers</span>
+        <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Monetize Your Daily Trips Around Campus</h3>
+        <ul style="list-style: none; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+          <li>✅ Browse available requests nearby in real-time</li>
+          <li>✅ Pick jobs that match your walking/transit route</li>
+          <li>✅ Keep 100% of the delivery reward directly</li>
+          <li>✅ Setup personal UPI ID and QR code for instant payment</li>
+        </ul>
+        <a href="{{ url_for('register') }}?role=shopper" class="btn btn-accent btn-block">Sign Up as Shopper</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT SECTION -->
+<section id="about" class="section" style="background: #F1F5F9; border-top: 1px solid var(--border-color);">
+  <div class="container container-narrow text-center">
+    <span class="section-subtitle">About Pick4Me</span>
+    <h2>Connecting Neighbors & Students</h2>
+    <p style="font-size: 1.1rem; line-height: 1.8; color: var(--text-main); margin-top: 1rem;">
+      "Pick4Me is built around a simple idea — if someone nearby needs something from a shop and another person is already going there, they can help each other."
+    </p>
+    <p style="margin-top: 1rem;">
+      Pick4Me is specially designed for <strong>college campuses</strong>, <strong>hostels</strong>, <strong>residential communities</strong>, and <strong>local neighbourhoods</strong>. The goal is to make small local shopping easier while giving shoppers a simple, flexible earning opportunity.
+    </p>
+  </div>
+</section>
+
+<!-- FUTURE SCOPE SECTION -->
+<section class="section">
+  <div class="container">
+    <div class="section-title-wrap">
+      <span class="section-subtitle" style="color: var(--accent-dark);">Roadmap</span>
+      <h2>Future Scope & Upcoming Enhancements</h2>
+      <p>Upcoming features currently planned for future production rollouts:</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+      <div class="card" style="padding: 1.25rem;">
+        <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">Coming in Future</span>
+        <h4 style="margin-bottom: 0.25rem;">Real UPI Gateway</h4>
+        <p style="font-size: 0.85rem; margin: 0;">Automated escrow and Razorpay/Paytm payment settlement.</p>
+      </div>
+
+      <div class="card" style="padding: 1.25rem;">
+        <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">Coming in Future</span>
+        <h4 style="margin-bottom: 0.25rem;">Google Maps & GPS</h4>
+        <p style="font-size: 0.85rem; margin: 0;">Live interactive map showing nearby shops and delivery pins.</p>
+      </div>
+
+      <div class="card" style="padding: 1.25rem;">
+        <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">Coming in Future</span>
+        <h4 style="margin-bottom: 0.25rem;">Live Location Tracking</h4>
+        <p style="font-size: 0.85rem; margin: 0;">Real-time GPS tracking of the shopper while out for delivery.</p>
+      </div>
+
+      <div class="card" style="padding: 1.25rem;">
+        <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">Coming in Future</span>
+        <h4 style="margin-bottom: 0.25rem;">Push & SMS Alerts</h4>
+        <p style="font-size: 0.85rem; margin: 0;">Instant WhatsApp & SMS notifications when order status changes.</p>
+      </div>
+
+      <div class="card" style="padding: 1.25rem;">
+        <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">Coming in Future</span>
+        <h4 style="margin-bottom: 0.25rem;">Shopper Ratings & Reviews</h4>
+        <p style="font-size: 0.85rem; margin: 0;">5-star feedback rating and trust badges for top community shoppers.</p>
+      </div>
+
+      <div class="card" style="padding: 1.25rem;">
+        <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">Coming in Future</span>
+        <h4 style="margin-bottom: 0.25rem;">Mobile Android/iOS App</h4>
+        <p style="font-size: 0.85rem; margin: 0;">Dedicated Flutter mobile app with native camera QR scanning.</p>
+      </div>
+
+      <div class="card" style="padding: 1.25rem;">
+        <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">Coming in Future</span>
+        <h4 style="margin-bottom: 0.25rem;">Multi-Language Support</h4>
+        <p style="font-size: 0.85rem; margin: 0;">Hindi, Marathi, Tamil, Telugu and regional language interfaces.</p>
+      </div>
+
+      <div class="card" style="padding: 1.25rem;">
+        <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">Coming in Future</span>
+        <h4 style="margin-bottom: 0.25rem;">Multi-City Expansion</h4>
+        <p style="font-size: 0.85rem; margin: 0;">Expansion to universities and residential townships across India.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CALL TO ACTION -->
+<section class="section" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #FFF; text-align: center;">
+  <div class="container container-narrow">
+    <h2 style="color: #FFF; font-size: 2.25rem; margin-bottom: 1rem;">Ready to Experience Smarter Community Delivery?</h2>
+    <p style="color: #E2E8F0; font-size: 1.1rem; margin-bottom: 2rem;">
+      Join Pick4Me today. Create your first shopping request or start earning rewards right away.
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+      <a href="{{ url_for('register') }}" class="btn btn-lg btn-accent" style="background: #F59E0B; border: none;">Create Free Account</a>
+      <a href="{{ url_for('login') }}" class="btn btn-lg btn-outline" style="color: #FFF; border-color: #FFF;">Explore Demo Accounts</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

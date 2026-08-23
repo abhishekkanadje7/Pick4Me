@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="padding-top: 3rem; padding-bottom: 4rem;">
+  <div class="card" style="padding: 2.5rem; max-width: 520px; margin: 0 auto; box-shadow: var(--shadow-lg);">
+    
+    <div style="text-align: center; margin-bottom: 1.75rem;">
+      <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Welcome Back</h2>
+      <p style="font-size: 0.95rem;">Log in to access your Pick4Me dashboard</p>
+    </div>
+
+    <!-- Quick Fill Bar for Presentation Demo -->
+    <div class="demo-accounts-card">
+      <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-dark); display: flex; align-items: center; gap: 0.35rem;">
+        ⚡ Demo Quick-Fill (One-Click Testing)
+      </div>
+      <div class="demo-btn-group">
+        <button type="button" class="btn-demo-quick" onclick="quickFillLogin('customer@pick4me.demo', 'customer123')">
+          👤 Customer
+        </button>
+        <button type="button" class="btn-demo-quick" onclick="quickFillLogin('shopper@pick4me.demo', 'shopper123')">
+          🚴 Shopper
+        </button>
+        <button type="button" class="btn-demo-quick" onclick="quickFillLogin('admin@pick4me.demo', 'admin123')">
+          🛡️ Admin
+        </button>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="form-group">
+        <label for="login_email" class="form-label">Email Address</label>
+        <input
+          type="email"
+          id="login_email"
+          name="email"
+          class="form-control"
+          placeholder="e.g. customer@pick4me.demo"
+          value="{{ email or '' }}"
+          required
+          autofocus
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="login_password" class="form-label">Password</label>
+        <input
+          type="password"
+          id="login_password"
+          name="password"
+          class="form-control"
+          placeholder="••••••••"
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem; padding: 0.85rem;">
+        Log In
+      </button>
+    </form>
+
+    <div style="margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); text-align: center; font-size: 0.9rem;">
+      Don't have an account yet?
+      <a href="{{ url_for('register') }}" style="font-weight: 700;">Create an Account</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
