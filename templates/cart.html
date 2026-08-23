@@ -8,11 +8,11 @@
   <div style="margin-bottom: 2rem;">
     <span class="badge badge-customer" style="margin-bottom: 0.4rem;">Checkout</span>
     <h1>Your Shopping Cart 🛒</h1>
-    <p>Review selected store items and confirm delivery address.</p>
+    <p>Select delivery distance zone & urgency to calculate dynamic commuter reward.</p>
   </div>
 
   {% if items %}
-  <div style="display: grid; grid-template-columns: 1.4fr 0.8fr; gap: 2rem; align-items: flex-start;">
+  <div style="display: grid; grid-template-columns: 1.3fr 0.9fr; gap: 2rem; align-items: flex-start;">
     
     <!-- Left Column: Cart Items -->
     <div class="card" style="padding: 1.75rem;">
@@ -50,15 +50,15 @@
       <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
         <a href="{{ url_for('products_catalog') }}" style="font-size: 0.9rem;">&larr; Add More Items</a>
         <div style="font-size: 1.1rem; font-weight: 700;">
-          Subtotal: ₹{{ "%.2f"|format(subtotal) }}
+          Items Subtotal: ₹<span id="subtotalVal">{{ "%.2f"|format(subtotal) }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Right Column: Delivery Details & Advance Checkout -->
+    <!-- Right Column: Delivery Details & Dynamic Distance/SLA Options -->
     <div class="card" style="padding: 1.75rem; background: #FFFFFF; box-shadow: var(--shadow-md);">
       <h3 style="margin-bottom: 1.25rem; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
-        Order & Delivery Summary
+        ⚡ Delivery Distance & SLA Pricing
       </h3>
 
       <form method="POST" action="{{ url_for('checkout_cart') }}">
@@ -76,6 +76,27 @@
           >
         </div>
 
+        <!-- Dynamic Distance Zone Selector -->
+        <div class="form-group">
+          <label class="form-label">Distance from Store / Zone *</label>
+          <select id="distance_tier" name="distance_tier" class="form-control" onchange="updateDynamicBill()" required>
+            <option value="within_campus" selected>🏫 Within Campus (0–1 km) — ₹20 Base (25m SLA)</option>
+            <option value="near_gate">🚪 Near Main Gate Market (1–2.5 km) — ₹35 Base (35m SLA)</option>
+            <option value="outer_market">🏙️ Outer Town Market (2.5–5 km+) — ₹55 Base (50m SLA)</option>
+          </select>
+        </div>
+
+        <!-- Rush Priority Mode Checkbox -->
+        <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.25rem;">
+          <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; margin: 0;">
+            <input type="checkbox" id="is_urgent" name="is_urgent" value="1" onchange="updateDynamicBill()">
+            <div>
+              <div style="font-weight: 700; font-size: 0.9rem; color: #92400E;">🔥 Urgent Rush Delivery (+₹15 Priority Surge)</div>
+              <div style="font-size: 0.75rem; color: #B45309;">Highlights order at top of board for instant pickup!</div>
+            </div>
+          </label>
+        </div>
+
         <div class="form-group">
           <label for="phone" class="form-label">Contact Phone *</label>
           <input
@@ -90,34 +111,38 @@
         </div>
 
         <div class="form-group">
-          <label for="instructions" class="form-label">Delivery Instructions (Optional)</label>
-          <textarea
+          <label for="instructions" class="form-label">Delivery Instructions</label>
+          <input
+            type="text"
             id="instructions"
             name="instructions"
             class="form-control"
-            rows="2"
-            placeholder="e.g. Please hand over to roommate or call upon gate arrival."
-          ></textarea>
+            placeholder="e.g. Call when entering hostel gate"
+          >
         </div>
 
-        <!-- Bill Breakdown Box -->
-        <div style="background: var(--bg-main); border-radius: var(--radius-md); padding: 1rem; margin: 1.25rem 0;">
+        <!-- Dynamic Live Price Calculation Breakdown -->
+        <div style="background: var(--bg-main); border-radius: var(--radius-md); padding: 1.15rem; margin: 1.25rem 0;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.9rem;">
             <span>Items Subtotal:</span>
-            <span>₹{{ "%.2f"|format(subtotal) }}</span>
+            <span>₹<span id="displaySubtotal">{{ "%.2f"|format(subtotal) }}</span></span>
           </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
-            <span>Peer Delivery Reward:</span>
-            <span style="color: var(--primary); font-weight: 600;">+₹{{ "%.2f"|format(delivery_fee) }}</span>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.9rem;">
+            <span>Base Distance Reward:</span>
+            <span style="color: var(--primary); font-weight: 600;">+₹<span id="displayBaseFee">20.00</span></span>
+          </div>
+          <div id="rushRow" style="display: none; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; color: #B45309; font-weight: 600;">
+            <span>Rush Priority Surge:</span>
+            <span>+₹15.00</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 0.5rem; color: var(--primary-dark);">
             <span>Total Payable:</span>
-            <span>₹{{ "%.2f"|format(total) }}</span>
+            <span>₹<span id="displayTotal">{{ "%.2f"|format(subtotal + 20.0) }}</span></span>
           </div>
         </div>
 
         <div style="background: var(--primary-subtle); border: 1px solid var(--primary-light); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--primary-dark); margin-bottom: 1.25rem;">
-          🛡️ <strong>Advance Escrow Protected:</strong> Funds are locked safely until you receive your items and share your 4-digit OTP.
+          ⚡ <strong>Smart Speed SLA:</strong> Commuters who deliver early earn +₹10 Speed Bonus. Unreasonable delays incur -₹10 deduction.
         </div>
 
         <button type="submit" class="btn btn-primary btn-block btn-lg">
@@ -137,4 +162,23 @@
   {% endif %}
 
 </div>
+
+<script>
+function updateDynamicBill() {
+  const subtotal = {{ subtotal }};
+  const tier = document.getElementById('distance_tier').value;
+  const isUrgent = document.getElementById('is_urgent').checked;
+
+  let baseFee = 20.0;
+  if (tier === 'near_gate') baseFee = 35.0;
+  if (tier === 'outer_market') baseFee = 55.0;
+
+  const rushFee = isUrgent ? 15.0 : 0.0;
+  const total = subtotal + baseFee + rushFee;
+
+  document.getElementById('displayBaseFee').innerText = baseFee.toFixed(2);
+  document.getElementById('rushRow').style.display = isUrgent ? 'flex' : 'none';
+  document.getElementById('displayTotal').innerText = total.toFixed(2);
+}
+</script>
 {% endblock %}

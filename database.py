@@ -15,7 +15,7 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # 1. Users Table (with Verification and Wallet)
+    # 1. Users Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +34,7 @@ def init_db():
         )
     ''')
 
-    # 2. Shops Table (Local Stores created by Shoppers/Merchants)
+    # 2. Shops Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS shops (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +52,7 @@ def init_db():
         )
     ''')
 
-    # 3. Products Table (Shop Catalog)
+    # 3. Products Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +81,7 @@ def init_db():
         )
     ''')
 
-    # 5. Orders Table (Store Orders & Custom Peer Errands with Escrow & OTP)
+    # 5. Orders Table with Smart Distance & Time-Based SLA Fields
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,12 +93,22 @@ def init_db():
             product_amount REAL NOT NULL,
             delivery_fee REAL NOT NULL,
             total_amount REAL NOT NULL,
+            distance_tier TEXT NOT NULL DEFAULT 'within_campus', -- 'within_campus', 'near_gate', 'outer_market'
+            distance_km REAL NOT NULL DEFAULT 0.8,
+            is_urgent INTEGER NOT NULL DEFAULT 0, -- 1 for Rush Delivery (+₹15 surge)
+            target_duration_mins INTEGER NOT NULL DEFAULT 30, -- Target SLA in minutes
+            accepted_at TIMESTAMP DEFAULT NULL,
+            delivered_at TIMESTAMP DEFAULT NULL,
+            actual_duration_mins INTEGER DEFAULT NULL,
+            speed_bonus REAL NOT NULL DEFAULT 0.0,
+            delay_penalty REAL NOT NULL DEFAULT 0.0,
+            final_payout REAL DEFAULT NULL,
             payment_status TEXT NOT NULL DEFAULT 'Pending_Payment', -- 'Pending_Payment', 'Escrow_Held', 'Released_To_Shopper', 'Refunded'
-            delivery_otp TEXT NOT NULL, -- 4-digit code for delivery confirmation
+            delivery_otp TEXT NOT NULL,
             delivery_address TEXT NOT NULL,
             phone TEXT NOT NULL,
             instructions TEXT DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'Paid_Pending_Shopper', -- 'Pending_Payment', 'Paid_Pending_Shopper', 'Accepted', 'Purchased', 'Out for Delivery', 'Delivered', 'Completed', 'Cancelled'
+            status TEXT NOT NULL DEFAULT 'Paid_Pending_Shopper',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES users (id),
@@ -114,7 +124,7 @@ def init_db():
             user_id INTEGER NOT NULL,
             order_id INTEGER DEFAULT NULL,
             amount REAL NOT NULL,
-            type TEXT NOT NULL, -- 'credit_earnings', 'credit_product_sale', 'debit_withdrawal'
+            type TEXT NOT NULL,
             description TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)

@@ -1,5 +1,6 @@
 import os
 import uuid
+import math
 from functools import wraps
 from datetime import datetime
 from flask import (
@@ -14,17 +15,39 @@ from database import get_db_connection, init_db, generate_otp
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'pick4me-super-secret-key-college-demo-2026')
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max upload
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Initialize database schema and seeds on startup
 with app.app_context():
     init_db()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def calculate_delivery_reward(distance_tier='within_campus', is_urgent=False):
+    """
+    Calculates base delivery reward and SLA target time based on distance zone:
+    - Within Campus: ₹20 base, 0.8 km, 25 mins SLA
+    - Near Gate: ₹35 base, 1.8 km, 35 mins SLA
+    - Outer Market: ₹55 base, 3.8 km, 50 mins SLA
+    - Rush Priority: +₹15 surge fee, high-speed target
+    """
+    tier_map = {
+        'within_campus': {'base_fee': 20.0, 'km': 0.8, 'sla_mins': 25, 'name': 'Within Campus (0–1 km)'},
+        'near_gate': {'base_fee': 35.0, 'km': 1.8, 'sla_mins': 35, 'name': 'Near Gate Market (1–2.5 km)'},
+        'outer_market': {'base_fee': 55.0, 'km': 3.8, 'sla_mins': 50, 'name': 'Outer Town Market (2.5–5 km+)'}
+    }
+    tier_info = tier_map.get(distance_tier, tier_map['within_campus'])
+    fee = tier_info['base_fee']
+    sla = tier_info['sla_mins']
+
+    if is_urgent:
+        fee += 15.0
+        sla = max(15, sla - 10)
+
+    return fee, tier_info['km'], sla
 
 # ==========================================
 # AUTHENTICATION HELPERS & DECORATORS
@@ -77,7 +100,6 @@ def admin_required(f):
 
 @app.context_processor
 def inject_globals():
-    """Inject user profile, cart item count, and current year into all templates."""
     user = None
     cart_count = 0
     user_shop = None
@@ -85,11 +107,9 @@ def inject_globals():
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
         
-        # Calculate cart items count
         cart_row = conn.execute('SELECT COALESCE(SUM(quantity), 0) FROM cart_items WHERE user_id = ?', (session['user_id'],)).fetchone()
         cart_count = cart_row[0] if cart_row else 0
 
-        # Check if shopper has a registered shop
         if user and user['role'] in ('shopper', 'admin'):
             user_shop = conn.execute('SELECT * FROM shops WHERE owner_id = ?', (session['user_id'],)).fetchone()
 
@@ -110,7 +130,6 @@ def inject_globals():
 def index():
     conn = get_db_connection()
     
-    # Featured shops
     shops = conn.execute('''
         SELECT s.*, u.name as owner_name, u.is_verified as owner_verified,
                (SELECT COUNT(*) FROM products p WHERE p.shop_id = s.id) as product_count
@@ -121,7 +140,6 @@ def index():
         LIMIT 6
     ''').fetchall()
 
-    # Popular products
     featured_products = conn.execute('''
         SELECT p.*, s.shop_name, s.address as shop_address
         FROM products p
@@ -131,17 +149,16 @@ def index():
         LIMIT 8
     ''').fetchall()
 
-    # Live available peer requests (Advance Escrow Paid)
+    # Available deliveries (Prioritizes Urgent Rush Orders)
     available_deliveries = conn.execute('''
         SELECT o.*, u.name as customer_name, u.location as customer_area
         FROM orders o
         JOIN users u ON o.customer_id = u.id
         WHERE o.status = 'Paid_Pending_Shopper'
-        ORDER BY o.created_at DESC
-        LIMIT 4
+        ORDER BY o.is_urgent DESC, o.delivery_fee DESC, o.created_at DESC
+        LIMIT 6
     ''').fetchall()
 
-    # Metrics
     total_shops = conn.execute("SELECT COUNT(*) FROM shops WHERE is_active = 1").fetchone()[0]
     total_products = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
     completed_orders = conn.execute("SELECT COUNT(*) FROM orders WHERE status = 'Completed'").fetchone()[0]
@@ -265,7 +282,7 @@ def products_catalog():
     )
 
 # ==========================================
-# SHOPPING CART & CHECKOUT WITH ADVANCE ESCROW
+# SHOPPING CART & DYNAMIC DISTANCE/SLA CHECKOUT
 # ==========================================
 
 @app.route('/cart')
@@ -286,15 +303,13 @@ def view_cart():
     conn.close()
 
     subtotal = sum(item['price'] * item['quantity'] for item in items)
-    delivery_fee = 25.0 if items else 0.0  # Fixed peer delivery fee
-    total = subtotal + delivery_fee
+    base_delivery_fee = 20.0 if items else 0.0
 
     return render_template(
         'cart.html',
         items=items,
         subtotal=subtotal,
-        delivery_fee=delivery_fee,
-        total=total,
+        base_delivery_fee=base_delivery_fee,
         user=user
     )
 
@@ -316,7 +331,6 @@ def add_to_cart():
         flash('Product not found.', 'danger')
         return redirect(url_for('products_catalog'))
 
-    # Check if already in cart
     existing_item = conn.execute(
         'SELECT * FROM cart_items WHERE user_id = ? AND product_id = ?',
         (user_id, product_id)
@@ -336,7 +350,7 @@ def add_to_cart():
     conn.commit()
     conn.close()
 
-    flash(f'"{product["name"]}" added to your cart!', 'success')
+    flash(f'"{product["name"]}" added to cart!', 'success')
     return redirect(request.referrer or url_for('view_cart'))
 
 @app.route('/cart/remove/<int:id>', methods=['POST'])
@@ -357,6 +371,8 @@ def checkout_cart():
     delivery_address = request.form.get('delivery_address', '').strip()
     phone = request.form.get('phone', '').strip()
     instructions = request.form.get('instructions', '').strip()
+    distance_tier = request.form.get('distance_tier', 'within_campus')
+    is_urgent = 1 if request.form.get('is_urgent') else 0
 
     if not delivery_address or not phone:
         flash('Please provide delivery address and contact phone.', 'danger')
@@ -377,10 +393,11 @@ def checkout_cart():
         return redirect(url_for('products_catalog'))
 
     subtotal = sum(item['price'] * item['quantity'] for item in items)
-    delivery_fee = 25.0
+    
+    # Calculate smart dynamic delivery reward & SLA duration
+    delivery_fee, distance_km, target_sla_mins = calculate_delivery_reward(distance_tier, bool(is_urgent))
     total_amount = subtotal + delivery_fee
     
-    # Format items summary
     items_list_str = ", ".join([f"{item['product_name']} (x{item['quantity']})" for item in items])
     shop_id = items[0]['shop_id']
     otp_code = generate_otp()
@@ -390,25 +407,26 @@ def checkout_cart():
         INSERT INTO orders (
             order_type, customer_id, shop_id, items_summary,
             product_amount, delivery_fee, total_amount,
+            distance_tier, distance_km, is_urgent, target_duration_mins,
             payment_status, delivery_otp, delivery_address, phone, instructions, status
-        ) VALUES ('shop_order', ?, ?, ?, ?, ?, ?, 'Pending_Payment', ?, ?, ?, ?, 'Pending_Payment')
+        ) VALUES ('shop_order', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Payment', ?, ?, ?, ?, 'Pending_Payment')
     ''', (
         user_id, shop_id, items_list_str,
         subtotal, delivery_fee, total_amount,
+        distance_tier, distance_km, is_urgent, target_sla_mins,
         otp_code, delivery_address, phone, instructions
     ))
     order_id = cursor.lastrowid
 
-    # Clear cart after creating order
     cursor.execute('DELETE FROM cart_items WHERE user_id = ?', (user_id,))
     conn.commit()
     conn.close()
 
-    flash('Order created! Please complete advance payment to broadcast order to nearby commuters.', 'info')
+    flash('Order created! Please complete advance payment to broadcast order to commuters.', 'info')
     return redirect(url_for('advance_payment_page', order_id=order_id))
 
 # ==========================================
-# CUSTOM PEER ERRANDS & SHOPPING REQUESTS
+# CUSTOM ERRANDS & DYNAMIC REWARD REQUESTS
 # ==========================================
 
 @app.route('/requests/create', methods=['GET', 'POST'])
@@ -424,17 +442,19 @@ def create_custom_request():
         delivery_address = request.form.get('delivery_address', '').strip()
         phone = request.form.get('phone', '').strip()
         estimated_price = request.form.get('estimated_price', 0.0, type=float)
-        delivery_fee = request.form.get('reward', 25.0, type=float)
+        distance_tier = request.form.get('distance_tier', 'within_campus')
+        is_urgent = 1 if request.form.get('is_urgent') else 0
         instructions = request.form.get('instructions', '').strip()
 
         if not all([product_name, category, shop_name, delivery_address, phone]):
             flash('Please fill in product, shop, and delivery details.', 'danger')
             return render_template('create_request.html', form_data=request.form)
 
-        if estimated_price <= 0 or delivery_fee < 5:
-            flash('Please enter a valid estimated price and minimum delivery reward of ₹5.', 'warning')
+        if estimated_price <= 0:
+            flash('Please enter a valid estimated item price.', 'warning')
             return render_template('create_request.html', form_data=request.form)
 
+        delivery_fee, distance_km, target_sla_mins = calculate_delivery_reward(distance_tier, bool(is_urgent))
         total_amount = estimated_price + delivery_fee
         otp_code = generate_otp()
         items_summary = f"{product_name} (from {shop_name})"
@@ -445,18 +465,20 @@ def create_custom_request():
             INSERT INTO orders (
                 order_type, customer_id, items_summary,
                 product_amount, delivery_fee, total_amount,
+                distance_tier, distance_km, is_urgent, target_duration_mins,
                 payment_status, delivery_otp, delivery_address, phone, instructions, status
-            ) VALUES ('custom_request', ?, ?, ?, ?, ?, 'Pending_Payment', ?, ?, ?, ?, 'Pending_Payment')
+            ) VALUES ('custom_request', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Payment', ?, ?, ?, ?, 'Pending_Payment')
         ''', (
             customer_id, items_summary,
             estimated_price, delivery_fee, total_amount,
+            distance_tier, distance_km, is_urgent, target_sla_mins,
             otp_code, delivery_address, phone, instructions
         ))
         order_id = cursor.lastrowid
         conn.commit()
         conn.close()
 
-        flash('Custom request created! Complete advance escrow payment to notify nearby commuters.', 'info')
+        flash('Custom request created! Complete advance payment to broadcast to commuters.', 'info')
         return redirect(url_for('advance_payment_page', order_id=order_id))
 
     conn = get_db_connection()
@@ -466,7 +488,7 @@ def create_custom_request():
     default_form = {
         'phone': user['phone'] if user else '',
         'delivery_address': user['location'] if user else '',
-        'reward': 25.0
+        'distance_tier': 'within_campus'
     }
     return render_template('create_request.html', form_data=default_form)
 
@@ -506,7 +528,6 @@ def confirm_advance_payment(order_id):
         flash('Unauthorized.', 'danger')
         return redirect(url_for('customer_dashboard'))
 
-    # Lock funds into platform Escrow and make order available on the Deliveries board
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE orders
@@ -516,11 +537,11 @@ def confirm_advance_payment(order_id):
     conn.commit()
     conn.close()
 
-    flash('Advance payment received! Your order is now active and nearby commuters are notified.', 'success')
+    flash('Advance payment received! Order broadcasted with Dynamic Speed Reward SLA.', 'success')
     return redirect(url_for('order_details', id=order_id))
 
 # ==========================================
-# ORDER TRACKING, DELIVERY MILESTONES & OTP RELEASE
+# ORDER TRACKING & TIME-BASED SLA OTP RELEASE
 # ==========================================
 
 @app.route('/orders')
@@ -549,7 +570,7 @@ def orders_list():
             WHERE o.shopper_id = ?
         '''
         params = [user_id]
-    else:  # admin
+    else:
         query = '''
             SELECT o.*, s.shop_name, c.name as customer_name, sh.name as shopper_name, sh.name as counterpart_name
             FROM orders o
@@ -603,7 +624,6 @@ def order_details(id):
 
     conn.close()
 
-    # Shopper next step determination
     next_step = None
     if order['status'] == 'Accepted':
         next_step = {'action': 'Purchased', 'label': 'Mark as Purchased (Items Picked Up)', 'class': 'btn-primary'}
@@ -645,16 +665,17 @@ def accept_delivery_task(id):
         flash('This delivery task has already been claimed by another commuter.', 'danger')
         return redirect(url_for('shopper_dashboard'))
 
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     cursor.execute('''
         UPDATE orders
-        SET status = 'Accepted', shopper_id = ?, updated_at = CURRENT_TIMESTAMP
+        SET status = 'Accepted', shopper_id = ?, accepted_at = ?, updated_at = ?
         WHERE id = ? AND status = 'Paid_Pending_Shopper'
-    ''', (shopper_id, id))
+    ''', (shopper_id, now_str, now_str, id))
 
     conn.commit()
     conn.close()
 
-    flash('Delivery task accepted! Pick up the items and follow the progress milestones.', 'success')
+    flash(f'Delivery task accepted! Target Delivery SLA: {order["target_duration_mins"]} minutes (Fast delivery earns +₹10 Speed Bonus!).', 'success')
     return redirect(url_for('order_details', id=id))
 
 @app.route('/orders/<int:id>/update-status', methods=['POST'])
@@ -683,17 +704,23 @@ def update_order_status(id):
         return redirect(url_for('order_details', id=id))
 
     cursor = conn.cursor()
-    cursor.execute('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (new_status, id))
+    if new_status == 'Delivered':
+        cursor.execute('UPDATE orders SET status = ?, delivered_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (new_status, id))
+    else:
+        cursor.execute('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (new_status, id))
     conn.commit()
     conn.close()
 
-    flash(f'Delivery milestone updated: {new_status}', 'success')
+    flash(f'Milestone updated: {new_status}', 'success')
     return redirect(url_for('order_details', id=id))
 
 @app.route('/orders/<int:id>/verify-otp', methods=['POST'])
 @shopper_required
 def verify_delivery_otp(id):
-    """Deliverer enters customer's 4-digit OTP upon physical handover -> Releases Escrow Payment to Deliverer's Wallet!"""
+    """
+    Deliverer enters customer's 4-digit OTP upon handover:
+    Calculates actual time taken vs target SLA -> Applies Speed Bonus (+₹10) or Late Penalty (-₹10) -> Credits Wallet!
+    """
     shopper_id = session['user_id']
     entered_otp = request.form.get('delivery_otp', '').strip()
 
@@ -705,44 +732,65 @@ def verify_delivery_otp(id):
         flash('Unauthorized.', 'danger')
         return redirect(url_for('orders_list'))
 
-    if order['status'] not in ('Out for Delivery', 'Delivered'):
-        conn.close()
-        flash('Order must be delivered before entering the delivery handover OTP.', 'warning')
-        return redirect(url_for('order_details', id=id))
-
     if entered_otp != order['delivery_otp']:
         conn.close()
-        flash('Incorrect Delivery OTP! Please ask the customer to read their 4-digit code.', 'danger')
+        flash('Incorrect Delivery OTP! Please ask the customer for their 4-digit code.', 'danger')
         return redirect(url_for('order_details', id=id))
 
-    # Release payment to deliverer's wallet
-    payout_amount = float(order['total_amount'])
-    cursor = conn.cursor()
+    # Calculate actual duration in minutes
+    actual_mins = 15
+    if order['accepted_at']:
+        try:
+            accepted_time = datetime.strptime(str(order['accepted_at'])[:19], '%Y-%m-%d %H:%M:%S')
+            actual_mins = max(1, int((datetime.now() - accepted_time).total_seconds() / 60))
+        except Exception:
+            actual_mins = 15
 
-    # 1. Update Order Status
+    target_sla = order['target_duration_mins']
+    speed_bonus = 0.0
+    delay_penalty = 0.0
+
+    # 1. Superfast delivery (< 65% of target time) -> +₹10 Speed Bonus
+    if actual_mins <= int(target_sla * 0.65):
+        speed_bonus = 10.0
+    # 2. Delayed delivery (> 140% of target time) -> -₹10 Delay Penalty
+    elif actual_mins > int(target_sla * 1.4):
+        delay_penalty = 10.0
+
+    final_delivery_reward = max(10.0, float(order['delivery_fee']) + speed_bonus - delay_penalty)
+    final_payout = float(order['product_amount']) + final_delivery_reward
+
+    cursor = conn.cursor()
+    # Update Order
     cursor.execute('''
         UPDATE orders
-        SET status = 'Completed', payment_status = 'Released_To_Shopper', updated_at = CURRENT_TIMESTAMP
+        SET status = 'Completed', payment_status = 'Released_To_Shopper',
+            delivered_at = CURRENT_TIMESTAMP, actual_duration_mins = ?,
+            speed_bonus = ?, delay_penalty = ?, final_payout = ?,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    ''', (id,))
+    ''', (actual_mins, speed_bonus, delay_penalty, final_payout, id))
 
-    # 2. Credit Wallet Balance
-    cursor.execute('''
-        UPDATE users
-        SET wallet_balance = wallet_balance + ?
-        WHERE id = ?
-    ''', (payout_amount, shopper_id))
+    # Credit Deliverer Wallet
+    cursor.execute('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', (final_payout, shopper_id))
 
-    # 3. Record Wallet Transaction
+    # If speed bonus earned or penalty applied, record description
+    payout_note = f"Payout for Order #ORD-{id}"
+    if speed_bonus > 0:
+        payout_note += f" (includes +₹10 Superfast Speed Bonus in {actual_mins} mins!)"
+    elif delay_penalty > 0:
+        payout_note += f" (includes -₹10 Late Delivery Penalty for {actual_mins} mins)"
+
     cursor.execute('''
         INSERT INTO wallet_transactions (user_id, order_id, amount, type, description)
         VALUES (?, ?, ?, 'credit_earnings', ?)
-    ''', (shopper_id, id, payout_amount, f"Earnings & Product Payout for Order #ORD-{id}"))
+    ''', (shopper_id, id, final_payout, payout_note))
 
     conn.commit()
     conn.close()
 
-    flash(f'🎉 OTP Verified! ₹{payout_amount:.2f} has been automatically credited to your Wallet!', 'success')
+    bonus_msg = f" (+₹10 Speed Bonus earned for fast delivery in {actual_mins}m!)" if speed_bonus > 0 else ""
+    flash(f'🎉 OTP Verified! ₹{final_payout:.2f}{bonus_msg} credited to your Wallet!', 'success')
     return redirect(url_for('wallet_dashboard'))
 
 # ==========================================
@@ -755,17 +803,15 @@ def shopper_dashboard():
     shopper_id = session['user_id']
     conn = get_db_connection()
 
-    # Available deliveries (Advance Escrow Paid)
     available_tasks = conn.execute('''
         SELECT o.*, u.name as customer_name, u.location as customer_area, s.shop_name, s.address as shop_address
         FROM orders o
         JOIN users u ON o.customer_id = u.id
         LEFT JOIN shops s ON o.shop_id = s.id
         WHERE o.status = 'Paid_Pending_Shopper'
-        ORDER BY o.created_at DESC
+        ORDER BY o.is_urgent DESC, o.delivery_fee DESC, o.created_at DESC
     ''').fetchall()
 
-    # Active deliveries assigned to shopper
     active_deliveries = conn.execute('''
         SELECT o.*, u.name as customer_name, u.phone as customer_phone, s.shop_name, s.address as shop_address
         FROM orders o

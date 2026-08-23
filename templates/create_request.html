@@ -1,133 +1,131 @@
 {% extends "base.html" %}
 
-{% block title %}Create Shopping Request - Pick4Me{% endblock %}
+{% block title %}Post Custom Errand - Pick4Me{% endblock %}
 
 {% block content %}
 <div class="container container-narrow" style="padding-top: 2.5rem; padding-bottom: 4rem;">
   
-  <div style="margin-bottom: 1.75rem;">
-    <a href="{{ url_for('customer_dashboard') }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Back to Dashboard</a>
-    <h1 style="margin-top: 0.5rem;">🛍️ Create a Shopping Request</h1>
-    <p>Tell nearby shoppers what you need and where to deliver it.</p>
-  </div>
+  <div class="card" style="padding: 2.5rem; max-width: 680px; margin: 0 auto; box-shadow: var(--shadow-lg); border-top: 6px solid var(--primary);">
+    
+    <div style="margin-bottom: 1.75rem;">
+      <span class="badge badge-customer" style="margin-bottom: 0.4rem;">Peer Commute Errand</span>
+      <h1 style="font-size: 1.85rem; margin-bottom: 0.35rem;">Post Custom Errand Request ⚡</h1>
+      <p style="font-size: 0.95rem;">Ask a peer commuter travelling near any shop/location to pick up items for you.</p>
+    </div>
 
-  <div class="card" style="padding: 2.25rem; box-shadow: var(--shadow-md);">
-    <form method="POST" action="{{ url_for('create_request') }}" id="requestForm">
+    <form method="POST" action="{{ url_for('create_custom_request') }}">
       
-      <!-- 1. Product Information -->
-      <h3 style="font-size: 1.15rem; color: var(--primary-dark); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-        1. Item Details
-      </h3>
-
-      <div class="form-row">
-        <div class="form-group" style="grid-column: span 2;">
-          <label for="product_name" class="form-label">Product Name *</label>
-          <input
-            type="text"
-            id="product_name"
-            name="product_name"
-            class="form-control"
-            placeholder="e.g. 200-page Spiral Notebook + Blue Gel Pen"
-            value="{{ form_data.get('product_name', '') }}"
-            required
-          >
-        </div>
+      <!-- Product / Item Details -->
+      <div class="form-group">
+        <label for="product_name" class="form-label">Item / Product Name *</label>
+        <input
+          type="text"
+          id="product_name"
+          name="product_name"
+          class="form-control"
+          placeholder="e.g. Lab Record Book + Black Gel Pen"
+          value="{{ form_data.get('product_name', '') }}"
+          required
+          autofocus
+        >
       </div>
 
       <div class="form-row">
         <div class="form-group">
           <label for="category" class="form-label">Category *</label>
           <select id="category" name="category" class="form-control" required>
-            <option value="Stationery" {% if form_data.get('category') == 'Stationery' %}selected{% endif %}>📚 Stationery & Books</option>
-            <option value="Food & Beverages" {% if form_data.get('category') == 'Food & Beverages' %}selected{% endif %}>🍔 Food & Snacks</option>
-            <option value="Medicines & Pharmacy" {% if form_data.get('category') == 'Medicines & Pharmacy' %}selected{% endif %}>💊 Pharmacy & Medicines</option>
-            <option value="Groceries & Essentials" {% if form_data.get('category') == 'Groceries & Essentials' %}selected{% endif %}>🛒 Groceries & Daily Needs</option>
-            <option value="Printout & Xerox" {% if form_data.get('category') == 'Printout & Xerox' %}selected{% endif %}>🖨️ Printouts & Xerox</option>
-            <option value="Electronics & Accessories" {% if form_data.get('category') == 'Electronics & Accessories' %}selected{% endif %}>🔌 Tech & Accessories</option>
-            <option value="General" {% if form_data.get('category') == 'General' or not form_data.get('category') %}selected{% endif %}>📦 General / Other</option>
+            <option value="Stationery">📚 Stationery & Xerox</option>
+            <option value="Food & Beverages">🍔 Food & Canteen</option>
+            <option value="Medicines & Pharmacy">💊 Pharmacy & Medicines</option>
+            <option value="Groceries & Essentials">🛒 Daily Essentials</option>
+            <option value="Electronics">🔌 Tech & Cables</option>
+            <option value="General" selected>📦 General Errands</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="quantity" class="form-label">Quantity *</label>
+          <label for="estimated_price" class="form-label">Estimated Item Cost (₹) *</label>
           <input
             type="number"
-            id="quantity"
-            name="quantity"
+            id="estimated_price"
+            name="estimated_price"
             class="form-control"
-            min="1"
-            max="100"
-            value="{{ form_data.get('quantity', 1) }}"
+            placeholder="120"
+            step="1"
+            min="5"
+            value="{{ form_data.get('estimated_price', '') }}"
+            oninput="updateCustomBill()"
             required
           >
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="description" class="form-label">Product Description / Specifications</label>
-        <textarea
-          id="description"
-          name="description"
-          class="form-control"
-          rows="2"
-          placeholder="e.g. Brand Classmate, single line ruled notebook. Any standard blue ball pen like Pentonic or Cello."
-        >{{ form_data.get('description', '') }}</textarea>
-      </div>
-
-      <!-- 2. Shop Details -->
-      <h3 style="font-size: 1.15rem; color: var(--primary-dark); margin-top: 1.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-        2. Shop Location
-      </h3>
-
+      <!-- Shop / Pickup Location -->
       <div class="form-row">
         <div class="form-group">
-          <label for="shop_name" class="form-label">Shop / Store Name *</label>
+          <label for="shop_name" class="form-label">Shop / Pickup Place *</label>
           <input
             type="text"
             id="shop_name"
             name="shop_name"
             class="form-control"
-            placeholder="e.g. ABC Stationery Store"
+            placeholder="e.g. Main Gate Xerox Shop"
             value="{{ form_data.get('shop_name', '') }}"
             required
           >
         </div>
 
         <div class="form-group">
-          <label for="shop_address" class="form-label">Shop Address / Landmark *</label>
+          <label for="shop_address" class="form-label">Shop Area / Street</label>
           <input
             type="text"
             id="shop_address"
             name="shop_address"
             class="form-control"
-            placeholder="e.g. Near College Main Gate, Shop #4"
+            placeholder="e.g. Near Bus Stand / Gate 1"
             value="{{ form_data.get('shop_address', '') }}"
-            required
           >
         </div>
       </div>
 
-      <!-- 3. Delivery Details -->
-      <h3 style="font-size: 1.15rem; color: var(--primary-dark); margin-top: 1.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-        3. Delivery Destination
-      </h3>
+      <!-- Distance Zone Selector -->
+      <div class="form-group">
+        <label class="form-label">Distance from Pickup Shop *</label>
+        <select id="distance_tier" name="distance_tier" class="form-control" onchange="updateCustomBill()" required>
+          <option value="within_campus" selected>🏫 Within Campus (0–1 km) — ₹20 Base Reward (25m Target SLA)</option>
+          <option value="near_gate">🚪 Near Main Gate Market (1–2.5 km) — ₹35 Base Reward (35m Target SLA)</option>
+          <option value="outer_market">🏙️ Outer Town Market (2.5–5 km+) — ₹55 Base Reward (50m Target SLA)</option>
+        </select>
+      </div>
 
+      <!-- Rush Priority Mode Checkbox -->
+      <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1.25rem;">
+        <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; margin: 0;">
+          <input type="checkbox" id="is_urgent" name="is_urgent" value="1" onchange="updateCustomBill()">
+          <div>
+            <div style="font-weight: 700; font-size: 0.9rem; color: #92400E;">🔥 Urgent Rush Delivery (+₹15 Priority Surge)</div>
+            <div style="font-size: 0.75rem; color: #B45309;">Pins request to top of board for immediate commuter claim!</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Delivery Address & Phone -->
       <div class="form-row">
         <div class="form-group">
-          <label for="delivery_address" class="form-label">Delivery Address *</label>
+          <label for="delivery_address" class="form-label">Your Delivery Destination *</label>
           <input
             type="text"
             id="delivery_address"
             name="delivery_address"
             class="form-control"
-            placeholder="e.g. Kaveri Hostel, Room 204, 2nd Floor"
+            placeholder="e.g. Kaveri Hostel, Room 204"
             value="{{ form_data.get('delivery_address', '') }}"
             required
           >
         </div>
 
         <div class="form-group">
-          <label for="phone" class="form-label">Customer Contact Phone *</label>
+          <label for="phone" class="form-label">Your Phone Number *</label>
           <input
             type="tel"
             id="phone"
@@ -141,70 +139,61 @@
       </div>
 
       <div class="form-group">
-        <label for="instructions" class="form-label">Additional Delivery Instructions (Optional)</label>
+        <label for="instructions" class="form-label">Specific Instructions (Optional)</label>
         <textarea
           id="instructions"
           name="instructions"
           class="form-control"
           rows="2"
-          placeholder="e.g. Please call me when you reach the security gate; I will come down."
+          placeholder="e.g. Please check brand before buying. Call upon reaching."
         >{{ form_data.get('instructions', '') }}</textarea>
       </div>
 
-      <!-- 4. Pricing & Shopper Reward -->
-      <h3 style="font-size: 1.15rem; color: var(--primary-dark); margin-top: 1.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-        4. Budget & Reward
-      </h3>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="estimated_price" class="form-label">Estimated Product Price (₹) *</label>
-          <input
-            type="number"
-            id="estimated_price"
-            name="estimated_price"
-            class="form-control"
-            min="0"
-            step="1"
-            placeholder="120"
-            value="{{ form_data.get('estimated_price', '50') }}"
-            required
-          >
-          <div class="form-hint">Approximate cost for the shopper to purchase the item.</div>
+      <!-- Live Dynamic Cost Summary Box -->
+      <div style="background: var(--bg-main); border-radius: var(--radius-md); padding: 1.15rem; margin: 1.25rem 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.9rem;">
+          <span>Item Estimated Price:</span>
+          <span>₹<span id="displayItemCost">0.00</span></span>
         </div>
-
-        <div class="form-group">
-          <label for="reward" class="form-label">Shopper Delivery Reward (₹) *</label>
-          <input
-            type="number"
-            id="reward"
-            name="reward"
-            class="form-control"
-            min="5"
-            step="1"
-            placeholder="30"
-            value="{{ form_data.get('reward', '25') }}"
-            required
-          >
-          <div class="form-hint">The incentive reward given to the shopper for helping you.</div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.9rem;">
+          <span>Distance Delivery Reward:</span>
+          <span style="color: var(--primary); font-weight: 600;">+₹<span id="displayFee">20.00</span></span>
+        </div>
+        <div id="rushRow" style="display: none; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; color: #B45309; font-weight: 600;">
+          <span>Rush Priority Surge:</span>
+          <span>+₹15.00</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 0.5rem; color: var(--primary-dark);">
+          <span>Total Advance Escrow:</span>
+          <span>₹<span id="displayTotal">20.00</span></span>
         </div>
       </div>
 
-      <!-- Live Calculation Card -->
-      <div style="background: var(--primary-subtle); border: 1px solid var(--primary-light); border-radius: var(--radius-md); padding: 1.25rem; margin: 1.5rem 0; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary-dark); text-transform: uppercase;">Total Estimated Payment</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted);">Product Price + Shopper Reward (Paid upon delivery)</div>
-        </div>
-        <div id="live_total_amount" style="font-size: 1.75rem; font-weight: 800; color: var(--primary-dark);">
-          ₹75.00
-        </div>
-      </div>
-
-      <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 1rem;">
-        🚀 Post Shopping Request
+      <button type="submit" class="btn btn-primary btn-block btn-lg" style="padding: 0.9rem;">
+        Post Errand & Proceed to Advance Payment &rarr;
       </button>
     </form>
+
   </div>
 </div>
+
+<script>
+function updateCustomBill() {
+  const itemCost = parseFloat(document.getElementById('estimated_price').value) || 0.0;
+  const tier = document.getElementById('distance_tier').value;
+  const isUrgent = document.getElementById('is_urgent').checked;
+
+  let baseFee = 20.0;
+  if (tier === 'near_gate') baseFee = 35.0;
+  if (tier === 'outer_market') baseFee = 55.0;
+
+  const rushFee = isUrgent ? 15.0 : 0.0;
+  const total = itemCost + baseFee + rushFee;
+
+  document.getElementById('displayItemCost').innerText = itemCost.toFixed(2);
+  document.getElementById('displayFee').innerText = baseFee.toFixed(2);
+  document.getElementById('rushRow').style.display = isUrgent ? 'flex' : 'none';
+  document.getElementById('displayTotal').innerText = total.toFixed(2);
+}
+</script>
 {% endblock %}

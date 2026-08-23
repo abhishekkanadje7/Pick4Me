@@ -13,7 +13,7 @@
         {% if role == 'shopper' %}Shopper Deliveries{% elif role == 'admin' %}All Platform Orders{% else %}Customer Orders{% endif %}
       </span>
       <h1>{% if role == 'shopper' %}Delivery History{% else %}Your Orders{% endif %}</h1>
-      <p>Track delivery status, view invoices, and confirm payments.</p>
+      <p>Track live delivery milestones, view SLA details, and check escrow payouts.</p>
     </div>
 
     <!-- Filter Buttons -->
@@ -40,10 +40,10 @@
         <thead>
           <tr>
             <th>Order ID</th>
-            <th>Product & Shop</th>
-            <th>{% if role == 'shopper' %}Customer{% else %}Shopper{% endif %}</th>
+            <th>Items Summary</th>
+            <th>{% if role == 'shopper' %}Customer{% else %}Deliverer{% endif %}</th>
             <th>Date</th>
-            <th>Amount</th>
+            <th>Amount & Reward</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
@@ -53,11 +53,16 @@
             <tr>
               <td><strong>#ORD-{{ order.id }}</strong></td>
               <td>
-                <div style="font-weight: 700;">{{ order.product_name }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">🏪 {{ order.shop_name }}</div>
+                <div style="font-weight: 700;">{{ order.items_summary }}</div>
+                {% if order.shop_name %}
+                  <div style="font-size: 0.8rem; color: var(--text-muted);">🏪 {{ order.shop_name }}</div>
+                {% endif %}
+                {% if order.is_urgent %}
+                  <span class="badge" style="background: #EF4444; color: #FFF; font-size: 0.65rem; padding: 0.1rem 0.4rem;">🔥 RUSH</span>
+                {% endif %}
               </td>
               <td>
-                <div style="font-weight: 600;">{{ order.counterpart_name }}</div>
+                <div style="font-weight: 600;">{{ order.counterpart_name or 'Pending Assignment' }}</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">{{ order.counterpart_phone or '' }}</div>
               </td>
               <td style="font-size: 0.85rem; color: var(--text-muted);">
@@ -65,11 +70,11 @@
               </td>
               <td>
                 {% if role == 'shopper' %}
-                  <strong style="color: var(--primary);">+₹{{ "%.2f"|format(order.reward) }}</strong>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Total: ₹{{ "%.2f"|format(order.total_amount) }}</div>
+                  <strong style="color: var(--primary);">+₹{{ "%.2f"|format(order.delivery_fee) }}</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Total Payout: ₹{{ "%.2f"|format(order.total_amount) }}</div>
                 {% else %}
                   <strong>₹{{ "%.2f"|format(order.total_amount) }}</strong>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Reward: ₹{{ "%.2f"|format(order.reward) }}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Delivery Fee: ₹{{ "%.2f"|format(order.delivery_fee) }}</div>
                 {% endif %}
               </td>
               <td>
@@ -91,9 +96,9 @@
       <h3>No orders found</h3>
       <p style="color: var(--text-muted);">There are no orders matching the selected filter.</p>
       {% if role == 'customer' %}
-        <a href="{{ url_for('create_request') }}" class="btn btn-primary" style="margin-top: 0.5rem;">Post a Shopping Request</a>
+        <a href="{{ url_for('create_custom_request') }}" class="btn btn-primary" style="margin-top: 0.5rem;">Post a Custom Errand</a>
       {% elif role == 'shopper' %}
-        <a href="{{ url_for('available_requests') }}" class="btn btn-primary" style="margin-top: 0.5rem;">Find Available Requests</a>
+        <a href="{{ url_for('shopper_dashboard') }}" class="btn btn-primary" style="margin-top: 0.5rem;">Find Available Deliveries</a>
       {% endif %}
     </div>
     {% endif %}

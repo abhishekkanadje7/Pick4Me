@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Order #ORD-{{ order.id }} - Pick4Me Tracking{% endblock %}
+{% block title %}Order #ORD-{{ order.id }} - Pick4Me Tracking & SLA{% endblock %}
 
 {% block content %}
 <div class="container container-narrow" style="padding-top: 2.5rem; padding-bottom: 4rem;">
@@ -14,23 +14,53 @@
     <!-- Top Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
       <div>
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
           <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">ORDER #ORD-{{ order.id }}</span>
           <span class="badge badge-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
-          <span class="badge {% if order.payment_status == 'Escrow_Held' %}badge-pending{% elif order.payment_status == 'Released_To_Shopper' %}badge-completed{% else %}badge-cancelled{% endif %}" style="font-size: 0.65rem;">
-            {{ order.payment_status }}
+          {% if order.is_urgent %}
+            <span class="badge" style="background: #EF4444; color: #FFF; font-size: 0.7rem; font-weight: 800; animation: pulse 2s infinite;">🔥 RUSH PRIORITY</span>
+          {% endif %}
+          <span class="badge badge-customer" style="font-size: 0.65rem;">
+            📍 {{ order.distance_tier|replace('_', ' ')|title }} (~{{ order.distance_km }} km)
           </span>
         </div>
         <h1 style="font-size: 1.75rem; margin: 0;">{{ order.items_summary }}</h1>
       </div>
 
       <div style="text-align: right;">
-        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Order Amount</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Advance Escrow</div>
         <div style="font-size: 1.85rem; font-weight: 800; color: var(--primary-dark);">
           ₹{{ "%.2f"|format(order.total_amount) }}
         </div>
       </div>
     </div>
+
+    <!-- DYNAMIC SLA COUNTDOWN & SPEED BONUS METER -->
+    {% if order.status in ('Accepted', 'Purchased', 'Out for Delivery', 'Delivered') %}
+      <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); color: #FFF; border-radius: var(--radius-md); padding: 1.25rem 1.5rem; margin: 1.5rem 0; box-shadow: var(--shadow-md);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <div style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px;">
+              ⚡ Dynamic SLA Speed Reward Meter
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 800; margin-top: 0.2rem;">
+              Target Delivery Window: <span style="color: #38BDF8;">{{ order.target_duration_mins }} Minutes</span>
+            </div>
+          </div>
+
+          <!-- Speed SLA Status Indicator -->
+          <div style="text-align: right;">
+            <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(16, 185, 129, 0.2); border: 1px solid #10B981; padding: 0.4rem 0.85rem; border-radius: var(--radius-full); font-size: 0.85rem; color: #34D399; font-weight: 700;">
+              🚀 Fast Delivery Bonus (+₹10) Active
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 0.75rem; border-top: 1px solid #334155; padding-top: 0.5rem;">
+          💡 <strong>Reward Rule:</strong> Deliver within {{ (order.target_duration_mins * 0.65)|int }} mins to earn +₹10 Speed Bonus. Deliveries past {{ (order.target_duration_mins * 1.4)|int }} mins incur -₹10 late penalty.
+        </div>
+      </div>
+    {% endif %}
 
     <!-- PROGRESS TRACKER TIMELINE -->
     {% set step_ranks = {'Pending_Payment': 0, 'Paid_Pending_Shopper': 1, 'Accepted': 2, 'Purchased': 3, 'Out for Delivery': 4, 'Delivered': 5, 'Completed': 6} %}
@@ -77,7 +107,7 @@
             {{ order.delivery_otp }}
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; max-width: 450px; margin: 0 auto;">
-            🛡️ <strong>Safety Rule:</strong> Give this 4-digit code to the deliverer <em>only</em> after they hand you the items. Entering this OTP will release their payment automatically!
+            🛡️ <strong>Safety Rule:</strong> Give this 4-digit code to the commuter <em>only</em> after they hand you the physical items!
           </p>
         </div>
       {% endif %}
@@ -89,7 +119,7 @@
       <!-- Deliverer Step-by-Step Update Button -->
       {% if next_step %}
         <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; margin: 1.5rem 0; text-align: center;">
-          <p style="font-size: 0.9rem; margin-bottom: 0.75rem; font-weight: 600;">Update delivery milestone:</p>
+          <p style="font-size: 0.9rem; margin-bottom: 0.75rem; font-weight: 600;">Update delivery progress:</p>
           <form method="POST" action="{{ url_for('update_order_status', id=order.id) }}">
             <input type="hidden" name="status" value="{{ next_step.action }}">
             <button type="submit" class="btn btn-lg {{ next_step.class }}" style="padding: 0.75rem 2rem;">
@@ -104,10 +134,10 @@
         <div style="background: var(--primary-subtle); border: 2px solid var(--primary); border-radius: var(--radius-md); padding: 1.75rem; margin: 1.5rem 0; text-align: center;">
           <h3 style="color: var(--primary-dark); font-size: 1.25rem; margin-bottom: 0.35rem;">📦 Ready for Handover?</h3>
           <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--text-main);">
-            Ask customer (<strong>{{ order.customer_name }}</strong>) for their <strong>4-digit OTP</strong> to complete this delivery and receive ₹{{ "%.2f"|format(order.total_amount) }} in your wallet!
+            Ask customer (<strong>{{ order.customer_name }}</strong>) for their <strong>4-digit OTP</strong> to complete this delivery and release funds into your wallet!
           </p>
           
-          <form method="POST" action="{{ url_for('verify_delivery_otp', id=order.id) }}" style="display: flex; gap: 0.5rem; justify-content: center; max-width: 350px; margin: 0 auto;">
+          <form method="POST" action="{{ url_for('verify_delivery_otp', id=order.id) }}" style="display: flex; gap: 0.5rem; justify-content: center; max-width: 360px; margin: 0 auto;">
             <input
               type="text"
               name="delivery_otp"
@@ -131,7 +161,12 @@
       <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: var(--radius-md); padding: 1.25rem; margin: 1.5rem 0; text-align: center;">
         <div style="font-weight: 800; color: #065F46; font-size: 1.2rem;">✅ Order Completed & Funds Released!</div>
         <p style="font-size: 0.9rem; color: #047857; margin: 0.25rem 0 0;">
-          The delivery OTP was verified. ₹{{ "%.2f"|format(order.total_amount) }} was successfully credited to the deliverer's wallet.
+          Delivered in <strong>{{ order.actual_duration_mins or 15 }} minutes</strong>.
+          {% if order.speed_bonus > 0 %}
+            <span style="font-weight: 700; color: #059669;">🚀 +₹{{ "%.2f"|format(order.speed_bonus) }} Speed Bonus was awarded!</span>
+          {% elif order.delay_penalty > 0 %}
+            <span style="font-weight: 700; color: #DC2626;">⚠️ -₹{{ "%.2f"|format(order.delay_penalty) }} late penalty was deducted.</span>
+          {% endif %}
         </p>
       </div>
     {% endif %}
@@ -158,7 +193,7 @@
           <div style="font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">{{ order.shopper_name }}</div>
           <div style="font-size: 0.9rem; color: var(--text-muted);">📞 {{ order.shopper_phone }}</div>
         {% else %}
-          <div style="color: var(--accent-dark); font-weight: 600;">⏳ Waiting for nearby commuter to accept...</div>
+          <div style="color: var(--accent-dark); font-weight: 600;">⏳ Waiting for nearby commuter to claim...</div>
         {% endif %}
 
         <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-top: 1rem; margin-bottom: 0.5rem;">💳 Payment Breakdown</h4>
@@ -167,11 +202,11 @@
           <span>₹{{ "%.2f"|format(order.product_amount) }}</span>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.5rem;">
-          <span>Delivery Reward:</span>
+          <span>Distance Fee ({{ order.distance_tier|replace('_', ' ')|title }}):</span>
           <span style="color: var(--primary); font-weight: 700;">+₹{{ "%.2f"|format(order.delivery_fee) }}</span>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 1rem; font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
-          <span>Total (Advance Escrow):</span>
+          <span>Total Escrow:</span>
           <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
         </div>
       </div>
