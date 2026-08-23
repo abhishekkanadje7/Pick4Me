@@ -87,168 +87,45 @@ def init_db():
         )
     ''')
 
-    conn.commit()
+    # Clean up any legacy dummy demo accounts safely
+    cursor.execute('''
+        DELETE FROM payments WHERE order_id IN (
+            SELECT id FROM orders WHERE customer_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
+            OR shopper_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
+        )
+    ''')
+    cursor.execute('''
+        DELETE FROM orders WHERE customer_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
+        OR shopper_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
+    ''')
+    cursor.execute('''
+        DELETE FROM requests WHERE customer_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
+        OR shopper_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
+    ''')
+    cursor.execute("DELETE FROM users WHERE email LIKE '%@pick4me.demo'")
 
-    # Seed demo users if not present
-    cursor.execute("SELECT COUNT(*) FROM users")
-    if cursor.fetchone()[0] == 0:
-        seed_demo_data(conn)
+    # Ensure Abhishek's Admin Account is permanently configured and active
+    cursor.execute("SELECT id FROM users WHERE email = 'abhishekkanadje7@gmail.com'")
+    existing_admin = cursor.fetchone()
+    if not existing_admin:
+        cursor.execute('''
+            INSERT INTO users (name, email, phone, password_hash, role, location, upi_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            'Abhishek Kanadje',
+            'abhishekkanadje7@gmail.com',
+            '+91 98765 00000',
+            generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),
+            'admin',
+            'Campus Admin Block, Room 101',
+            'abhishek@upi'
+        ))
     else:
-        # Ensure Abhishek's admin account is always updated and ready
-        cursor.execute("SELECT id FROM users WHERE email = 'abhishekkanadje7@gmail.com'")
-        if not cursor.fetchone():
-            cursor.execute('''
-                INSERT INTO users (name, email, phone, password_hash, role, location, upi_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                'Abhishek Kanadje',
-                'abhishekkanadje7@gmail.com',
-                '+91 98765 00000',
-                generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),
-                'admin',
-                'Campus Admin Block, Room 101',
-                'abhishek@upi'
-            ))
-        else:
-            cursor.execute('''
-                UPDATE users SET password_hash = ?, role = 'admin' WHERE email = 'abhishekkanadje7@gmail.com'
-            ''', (generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),))
-        conn.commit()
-
-    conn.close()
-
-def seed_demo_data(conn):
-    cursor = conn.cursor()
-
-    # Seed Customer
-    cursor.execute('''
-        INSERT INTO users (name, email, phone, password_hash, role, location, upi_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        'Priya Sharma',
-        'customer@pick4me.demo',
-        '+91 98765 43210',
-        generate_password_hash('customer123', method='pbkdf2:sha256'),
-        'customer',
-        'Kaveri Hostel, Room 204, Campus East',
-        ''
-    ))
-    customer_id = cursor.lastrowid
-
-    # Seed Shopper
-    cursor.execute('''
-        INSERT INTO users (name, email, phone, password_hash, role, location, upi_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        'Rahul Verma',
-        'shopper@pick4me.demo',
-        '+91 98765 12345',
-        generate_password_hash('shopper123', method='pbkdf2:sha256'),
-        'shopper',
-        'Campus Library & Student Center',
-        'rahul.verma@okhdfcbank'
-    ))
-    shopper_id = cursor.lastrowid
-
-    # Seed Admin (Abhishek Kanadje)
-    cursor.execute('''
-        INSERT INTO users (name, email, phone, password_hash, role, location, upi_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        'Abhishek Kanadje',
-        'abhishekkanadje7@gmail.com',
-        '+91 98765 00000',
-        generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),
-        'admin',
-        'Campus Admin Block, Room 101',
-        'abhishek@upi'
-    ))
-
-    # Seed initial requests
-    # 1. Available Pending request for instant demonstration
-    cursor.execute('''
-        INSERT INTO requests (customer_id, product_name, description, category, quantity, shop_name, shop_address, delivery_address, phone, estimated_price, reward, instructions, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        customer_id,
-        'Classmate Spiral Notebook (200 pgs) + Blue Pen',
-        'Need single ruled spiral notebook and one blue ballpoint pen for tomorrow\'s lab submission.',
-        'Stationery',
-        2,
-        'ABC Stationery & Xerox Corner',
-        'Near College Main Gate, Shop #4',
-        'Kaveri Hostel, Room 204, 2nd Floor',
-        '+91 98765 43210',
-        140.0,
-        35.0,
-        'Please call when you reach hostel gate.',
-        'Pending'
-    ))
-
-    # 2. Another pending request
-    cursor.execute('''
-        INSERT INTO requests (customer_id, product_name, description, category, quantity, shop_name, shop_address, delivery_address, phone, estimated_price, reward, instructions, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        customer_id,
-        'Cold Coffee & Grilled Sandwich',
-        'One iced hazelnut cold coffee and veg cheese sandwich from canteen.',
-        'Food & Beverages',
-        1,
-        'Campus Central Canteen',
-        'Food Court, Student Activity Center',
-        'Department of Computer Engineering, Lab 3',
-        '+91 98765 43210',
-        120.0,
-        25.0,
-        'I am in the lab, please text on WhatsApp upon arrival.',
-        'Pending'
-    ))
-
-    # 3. Seed an already completed request & order to show history
-    cursor.execute('''
-        INSERT INTO requests (customer_id, shopper_id, product_name, description, category, quantity, shop_name, shop_address, delivery_address, phone, estimated_price, reward, instructions, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        customer_id,
-        shopper_id,
-        'Paracetamol 650mg + ORS Sachet',
-        'Mild fever medicines from pharmacy.',
-        'Medicines & Pharmacy',
-        1,
-        'Apollo Campus Pharmacy',
-        'Gate 2 Commercial Complex',
-        'Kaveri Hostel, Room 204',
-        '+91 98765 43210',
-        60.0,
-        30.0,
-        'Urgent delivery please.',
-        'Completed'
-    ))
-    past_req_id = cursor.lastrowid
-
-    cursor.execute('''
-        INSERT INTO orders (request_id, customer_id, shopper_id, product_amount, reward, total_amount, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        past_req_id,
-        customer_id,
-        shopper_id,
-        60.0,
-        30.0,
-        90.0,
-        'Completed'
-    ))
-    past_order_id = cursor.lastrowid
-
-    cursor.execute('''
-        INSERT INTO payments (order_id, amount, status, payment_method)
-        VALUES (?, ?, ?, ?)
-    ''', (
-        past_order_id,
-        90.0,
-        'Confirmed',
-        'UPI'
-    ))
+        cursor.execute('''
+            UPDATE users
+            SET password_hash = ?, role = 'admin'
+            WHERE email = 'abhishekkanadje7@gmail.com'
+        ''', (generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),))
 
     conn.commit()
+    conn.close()
