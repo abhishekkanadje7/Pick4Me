@@ -34,7 +34,7 @@
             id="shop_name"
             name="shop_name"
             class="form-control"
-            placeholder="e.g. ABC Stationery & Xerox Corner"
+            placeholder="Enter store name"
             value="{{ shop.shop_name if shop else '' }}"
             required
           >
@@ -59,7 +59,7 @@
             id="address"
             name="address"
             class="form-control"
-            placeholder="e.g. College Gate 1, Commercial Complex #4"
+            placeholder="Enter shop address or building room number"
             value="{{ shop.address if shop else '' }}"
             required
           >
@@ -72,7 +72,7 @@
             id="landmark"
             name="landmark"
             class="form-control"
-            placeholder="e.g. Opposite Student Activity Center"
+            placeholder="Enter nearby landmark"
             value="{{ shop.landmark if shop else '' }}"
           >
         </div>
@@ -97,7 +97,7 @@
             name="description"
             class="form-control"
             rows="2"
-            placeholder="e.g. All lab manuals, spiral notebooks, color printouts and pens available at student rates."
+            placeholder="Enter brief description of goods and services available"
           >{{ shop.description if shop else '' }}</textarea>
         </div>
 
@@ -127,7 +127,7 @@
                 id="name"
                 name="name"
                 class="form-control"
-                placeholder="e.g. Classmate 200-page Notebook (Spiral)"
+                placeholder="Enter product title"
                 required
               >
             </div>
@@ -143,7 +143,7 @@
                 class="form-control"
                 step="0.5"
                 min="1"
-                placeholder="80"
+                placeholder="Price in INR"
                 required
               >
             </div>
@@ -168,7 +168,7 @@
               id="product_desc"
               name="description"
               class="form-control"
-              placeholder="e.g. Single line ruled, A4 size, high quality paper."
+              placeholder="Enter product details, size, or specifications"
             >
           </div>
 

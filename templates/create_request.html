@@ -23,7 +23,7 @@
           id="product_name"
           name="product_name"
           class="form-control"
-          placeholder="e.g. Lab Record Book + Black Gel Pen"
+          placeholder="Enter item name or errand details"
           value="{{ form_data.get('product_name', '') }}"
           required
           autofocus
@@ -50,7 +50,7 @@
             id="estimated_price"
             name="estimated_price"
             class="form-control"
-            placeholder="120"
+            placeholder="Estimated cost"
             step="1"
             min="5"
             value="{{ form_data.get('estimated_price', '') }}"
@@ -69,7 +69,7 @@
             id="shop_name"
             name="shop_name"
             class="form-control"
-            placeholder="e.g. Main Gate Xerox Shop"
+            placeholder="Enter shop or pickup location"
             value="{{ form_data.get('shop_name', '') }}"
             required
           >
@@ -82,7 +82,7 @@
             id="shop_address"
             name="shop_address"
             class="form-control"
-            placeholder="e.g. Near Bus Stand / Gate 1"
+            placeholder="Enter street or area of the shop"
             value="{{ form_data.get('shop_address', '') }}"
           >
         </div>
@@ -118,7 +118,7 @@
             id="delivery_address"
             name="delivery_address"
             class="form-control"
-            placeholder="e.g. Kaveri Hostel, Room 204"
+            placeholder="Enter your delivery address or hostel room"
             value="{{ form_data.get('delivery_address', '') }}"
             required
           >
@@ -145,7 +145,7 @@
           name="instructions"
           class="form-control"
           rows="2"
-          placeholder="e.g. Please check brand before buying. Call upon reaching."
+          placeholder="Enter any special instructions for the deliverer"
         >{{ form_data.get('instructions', '') }}</textarea>
       </div>
 

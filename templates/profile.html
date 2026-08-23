@@ -84,7 +84,7 @@
           💳 Shopper UPI Payout Settings
         </h4>
         <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">
-          Customers will scan or copy these details to pay you for delivered items.
+          Your payout credentials for receiving automatic wallet withdrawals.
         </p>
 
         <div class="form-group">
@@ -94,7 +94,7 @@
             id="upi_id"
             name="upi_id"
             class="form-control"
-            placeholder="e.g. yourname@okhdfcbank"
+            placeholder="Enter your UPI ID / VPA"
             value="{{ user.upi_id or '' }}"
           >
         </div>
@@ -113,11 +113,11 @@
 
         <!-- Current QR Code Preview -->
         <div style="margin-top: 1rem;">
-          <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem;">Current / Preview QR Code:</div>
-          {% if user.qr_code %}
+          <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem;">Current Payout QR Code:</div>
+          {% if user.qr_code and user.qr_code != 'upi_qr.png' %}
             <img id="qr_preview" src="{{ url_for('static', filename='uploads/' + user.qr_code) }}" alt="Shopper QR Code" style="width: 140px; height: 140px; object-fit: contain; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem; background: #FFF;">
           {% else %}
-            <img id="qr_preview" src="{{ url_for('static', filename='images/demo_qr.png') }}" alt="Default QR" style="width: 140px; height: 140px; object-fit: contain; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem; background: #FFF;">
+            <img id="qr_preview" src="{{ url_for('static', filename='images/upi_qr.png') }}" alt="Pick4Me QR" style="width: 140px; height: 140px; object-fit: contain; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem; background: #FFF;">
           {% endif %}
         </div>
       </div>
