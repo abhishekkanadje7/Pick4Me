@@ -1,13 +1,13 @@
 """
-Pick4Me Automated End-to-End Workflow Verification Script
-Tests complete User Registration -> Request Creation -> Shopper Accept -> Delivery Milestones -> Completion & Payment.
+Pick4Me 2.0 Complete E-Commerce, Shop Catalog, Cart & Peer Delivery Test Suite
+Tests: Shop Setup -> Product Catalog -> Cart & Advance Payment -> Commuter Claim -> Milestones -> Delivery OTP -> Auto-Wallet Credit
 """
 
 import unittest
 from app import app
 from database import init_db, get_db_connection
 
-class Pick4MeWorkflowTestCase(unittest.TestCase):
+class Pick4MeFullPlatformTestCase(unittest.TestCase):
     def setUp(self):
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
@@ -15,16 +15,68 @@ class Pick4MeWorkflowTestCase(unittest.TestCase):
         with app.app_context():
             init_db()
 
-    def test_complete_clean_workflow(self):
+    def test_complete_amazon_style_and_peer_delivery_flow(self):
         print("\n=======================================================")
-        print("STARTING PICK4ME FULL END-TO-END WORKFLOW TEST")
+        print("STARTING PICK4ME 2.0 COMPLETE PLATFORM TEST")
         print("=======================================================")
 
-        # 1. Customer Registration & Login
-        print("Step 1: Registering a new Customer...")
+        # 1. Register Shopper / Store Merchant
+        print("Step 1: Registering Shopper/Merchant (Rahul Verma)...")
+        res = self.client.post('/register', data={
+            'name': 'Rahul Verma',
+            'email': 'rahul.merchant@campus.edu',
+            'phone': '+91 98765 12345',
+            'password': 'password123',
+            'confirm_password': 'password123',
+            'location': 'Commercial Gate 1',
+            'role': 'shopper',
+            'upi_id': '7387157739@upi'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        print("✓ Shopper/Merchant registered successfully.")
+
+        # 2. Merchant Registers Shop
+        print("Step 2: Registering Shop (ABC Stationery Corner)...")
+        res = self.client.post('/merchant/shop', data={
+            'shop_name': 'ABC Stationery & Xerox Corner',
+            'category': 'Stationery',
+            'address': 'Commercial Complex #4, Gate 1',
+            'landmark': 'Opposite Library',
+            'phone': '+91 98765 12345',
+            'description': 'Complete lab manuals, notebook sets, pens and xerox'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'ABC Stationery & Xerox Corner', res.data)
+        print("✓ Shop registered successfully.")
+
+        # 3. Merchant Adds Products to Store Catalog
+        print("Step 3: Adding Product to Catalog (Spiral Notebook)...")
+        res = self.client.post('/merchant/products/add', data={
+            'name': 'Classmate Spiral Notebook (200 pgs)',
+            'category': 'Stationery',
+            'price': 80.0,
+            'description': 'A4 single line ruled notebook'
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'Classmate Spiral Notebook', res.data)
+        print("✓ Product added to shop catalog.")
+
+        # Extract product ID
+        conn = get_db_connection()
+        prod = conn.execute("SELECT * FROM products WHERE name = 'Classmate Spiral Notebook (200 pgs)'").fetchone()
+        self.assertIsNotNone(prod)
+        prod_id = prod['id']
+        conn.close()
+
+        # 4. Shopper Logout
+        print("Step 4: Logging out Shopper...")
+        self.client.get('/logout', follow_redirects=True)
+
+        # 5. Customer Registration & Login
+        print("Step 5: Registering Customer (Priya Sharma)...")
         res = self.client.post('/register', data={
             'name': 'Priya Sharma',
-            'email': 'priya.test@campus.edu',
+            'email': 'priya.customer@campus.edu',
             'phone': '+91 98765 43210',
             'password': 'password123',
             'confirm_password': 'password123',
@@ -32,115 +84,96 @@ class Pick4MeWorkflowTestCase(unittest.TestCase):
             'role': 'customer'
         }, follow_redirects=True)
         self.assertEqual(res.status_code, 200)
-        self.assertIn(b'Priya Sharma', res.data)
-        print("✓ Customer registered and logged in successfully.")
+        print("✓ Customer registered successfully.")
 
-        # 2. Customer Creates a Shopping Request
-        print("Step 2: Customer creating a new shopping request...")
-        res = self.client.post('/requests/create', data={
-            'product_name': 'Classmate Spiral Notebook',
-            'category': 'Stationery',
-            'quantity': 2,
-            'description': '200 pages spiral single ruled',
-            'shop_name': 'ABC Stationery',
-            'shop_address': 'Near College Road',
-            'delivery_address': 'College Hostel, Room 204',
+        # 6. Customer Adds Product to Cart
+        print(f"Step 6: Customer adding Product #{prod_id} to Cart...")
+        res = self.client.post('/cart/add', data={
+            'product_id': prod_id,
+            'quantity': 2
+        }, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        print("✓ Added 2 units to Cart.")
+
+        # 7. Customer Checks Out with Advance Escrow
+        print("Step 7: Customer Checking Out from Cart...")
+        res = self.client.post('/cart/checkout', data={
+            'delivery_address': 'Kaveri Hostel, Room 204',
             'phone': '+91 98765 43210',
-            'estimated_price': 140.0,
-            'reward': 30.0,
-            'instructions': 'Please call upon reaching hostel gate.'
+            'instructions': 'Please call upon gate arrival.'
         }, follow_redirects=True)
         self.assertEqual(res.status_code, 200)
-        self.assertIn(b'Request created successfully', res.data)
+        self.assertIn(b'Scan & Pay via UPI', res.data)
+        print("✓ Checkout complete, redirected to Advance UPI Payment page.")
 
+        # Extract Order ID
         conn = get_db_connection()
-        req = conn.execute("SELECT * FROM requests WHERE product_name = 'Classmate Spiral Notebook' ORDER BY id DESC LIMIT 1").fetchone()
-        self.assertIsNotNone(req)
-        self.assertEqual(req['status'], 'Pending')
-        req_id = req['id']
-        conn.close()
-        print(f"✓ Verified request #{req_id} created with status 'Pending'.")
-
-        # 3. Customer Logout
-        print("Step 3: Logging out Customer...")
-        self.client.get('/logout', follow_redirects=True)
-
-        # 4. Shopper Registration & Login
-        print("Step 4: Registering a new Shopper...")
-        res = self.client.post('/register', data={
-            'name': 'Rahul Verma',
-            'email': 'rahul.test@campus.edu',
-            'phone': '+91 98765 12345',
-            'password': 'password123',
-            'confirm_password': 'password123',
-            'location': 'Campus Library & Student Center',
-            'role': 'shopper',
-            'upi_id': 'rahul.verma@okhdfcbank'
-        }, follow_redirects=True)
-        self.assertEqual(res.status_code, 200)
-        self.assertIn(b'Rahul Verma', res.data)
-        print("✓ Shopper registered and logged in successfully.")
-
-        # 5. Shopper Accepts the Request
-        print(f"Step 5: Shopper accepting request #{req_id}...")
-        res = self.client.post(f'/requests/{req_id}/accept', follow_redirects=True)
-        self.assertEqual(res.status_code, 200)
-        self.assertIn(b'Request accepted successfully', res.data)
-
-        conn = get_db_connection()
-        order = conn.execute("SELECT * FROM orders WHERE request_id = ?", (req_id,)).fetchone()
+        order = conn.execute("SELECT * FROM orders ORDER BY id DESC LIMIT 1").fetchone()
         self.assertIsNotNone(order)
         order_id = order['id']
-        self.assertEqual(order['status'], 'Accepted')
+        delivery_otp = order['delivery_otp']
+        self.assertEqual(order['payment_status'], 'Pending_Payment')
+        self.assertEqual(float(order['product_amount']), 160.0) # 80 * 2
+        self.assertEqual(float(order['delivery_fee']), 25.0)
+        self.assertEqual(float(order['total_amount']), 185.0)
         conn.close()
-        print(f"✓ Order #ORD-{order_id} generated.")
+        print(f"✓ Order #ORD-{order_id} created with Total: ₹185.00, Secret OTP: {delivery_otp}")
 
-        # 6. Concurrency Check: Duplicate Acceptance Blocked
-        print("Step 6: Testing duplicate accept prevention...")
-        res_dup = self.client.post(f'/requests/{req_id}/accept', follow_redirects=True)
-        self.assertIn(b'already been accepted', res_dup.data)
-        print("✓ Concurrency protection verified: Duplicate acceptance blocked.")
+        # 8. Customer Confirms Advance Payment
+        print("Step 8: Customer confirming advance UPI payment...")
+        res = self.client.post(f'/pay/escrow/{order_id}/confirm', follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'Advance payment received', res.data)
+        print("✓ Advance Payment locked in Escrow. Broadcasted to commuters.")
 
-        # 7. Shopper Step-by-Step Delivery Progress
-        print("Step 7a: Updating status: Accepted -> Purchased...")
-        self.client.post(f'/orders/{order_id}/update-status', data={'status': 'Purchased'}, follow_redirects=True)
-
-        print("Step 7b: Updating status: Purchased -> Out for Delivery...")
-        self.client.post(f'/orders/{order_id}/update-status', data={'status': 'Out for Delivery'}, follow_redirects=True)
-
-        print("Step 7c: Updating status: Out for Delivery -> Delivered...")
-        self.client.post(f'/orders/{order_id}/update-status', data={'status': 'Delivered'}, follow_redirects=True)
-        print("✓ Shopper updated status to Delivered.")
-
-        # 8. Shopper Logout & Customer Confirmation
-        print("Step 8: Logging out Shopper...")
+        # 9. Customer Logout & Shopper Claim
+        print("Step 9: Commuter logging in to claim delivery...")
         self.client.get('/logout', follow_redirects=True)
-
-        print("Step 9: Customer logging in to confirm delivery & simulate payment...")
         self.client.post('/login', data={
-            'email': 'priya.test@campus.edu',
+            'email': 'rahul.merchant@campus.edu',
             'password': 'password123'
         }, follow_redirects=True)
 
-        res_confirm = self.client.post(f'/orders/{order_id}/confirm-delivery', follow_redirects=True)
-        self.assertEqual(res_confirm.status_code, 200)
-        self.assertIn(b'Delivery completed successfully', res_confirm.data)
-        print("✓ Customer confirmed delivery. Order marked 'Completed'.")
+        res = self.client.post(f'/orders/{order_id}/accept', follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'Delivery task accepted', res.data)
+        print("✓ Commuter claimed the delivery task.")
 
-        # 10. Admin Verification
-        print("Step 10: Admin logging in to verify control center...")
+        # 10. Commuter Delivery Milestones
+        print("Step 10: Updating milestones: Accepted -> Purchased -> Out for Delivery -> Delivered...")
+        self.client.post(f'/orders/{order_id}/update-status', data={'status': 'Purchased'}, follow_redirects=True)
+        self.client.post(f'/orders/{order_id}/update-status', data={'status': 'Out for Delivery'}, follow_redirects=True)
+        self.client.post(f'/orders/{order_id}/update-status', data={'status': 'Delivered'}, follow_redirects=True)
+        print("✓ Marked as Delivered.")
+
+        # 11. Delivery Handover OTP Verification -> Auto-Wallet Credit!
+        print(f"Step 11: Commuter entering customer 4-digit OTP ({delivery_otp})...")
+        res = self.client.post(f'/orders/{order_id}/verify-otp', data={'delivery_otp': delivery_otp}, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'OTP Verified', res.data)
+        print("✓ OTP Verified! ₹185.00 automatically credited to Commuter Wallet.")
+
+        # Check Wallet in DB
+        conn = get_db_connection()
+        shopper_user = conn.execute("SELECT * FROM users WHERE email = 'rahul.merchant@campus.edu'").fetchone()
+        self.assertEqual(float(shopper_user['wallet_balance']), 185.0)
+        conn.close()
+        print(f"✓ Wallet Balance Verified: ₹{shopper_user['wallet_balance']:.2f}")
+
+        # 12. Admin Control Center Check
+        print("Step 12: Admin (Abhishek Kanadje) logging in...")
         self.client.get('/logout', follow_redirects=True)
-        res_admin_login = self.client.post('/login', data={
+        res_admin = self.client.post('/login', data={
             'email': 'abhishekkanadje7@gmail.com',
             'password': 'Abhi*2007'
         }, follow_redirects=True)
-        self.assertEqual(res_admin_login.status_code, 200)
-        self.assertIn(b'Admin Control Center', res_admin_login.data)
-        self.assertIn(b'Abhishek Kanadje', res_admin_login.data)
-        print("✓ Abhishek Kanadje Admin verified.")
+        self.assertEqual(res_admin.status_code, 200)
+        self.assertIn(b'Admin Control Center', res_admin.data)
+        self.assertIn(b'Abhishek Kanadje', res_admin.data)
+        print("✓ Admin verified.")
 
         print("\n=======================================================")
-        print("ALL VERIFICATION STEPS PASSED WITH CLEAN DATABASE! 100% WORKING")
+        print("ALL 12 PLATFORM 2.0 WORKFLOW STEPS PASSED PERFECTLY! 100% SUCCESS")
         print("=======================================================\n")
 
 if __name__ == '__main__':

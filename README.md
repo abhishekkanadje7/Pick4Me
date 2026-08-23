@@ -1,45 +1,46 @@
 # Pick4Me 🛍️🚴
-> **Your Community, Your Delivery**  
-> *A Hyperlocal Community Shopping and Peer-to-Peer Delivery Platform*
+> **Local Marketplace & Crowdsourced Peer Delivery Network**  
+> *Connecting Local Stores, Campus Students, and Daily Commuters*
 
 ---
 
 ## 🌟 Project Overview
 
-**Pick4Me** is a full-stack, community-driven web application built for college campuses, hostels, residential complexes, and local neighbourhoods. 
+**Pick4Me** is a full-stack, Amazon/Blinkit-style community e-commerce marketplace and crowdsourced peer delivery platform.
 
-The idea is simple:
-1. **A customer** needs a product from a nearby shop (stationery, medicine, snacks, groceries, printouts) but cannot or does not want to go in person.
-2. The customer creates a shopping request on **Pick4Me** detailing the item, shop location, destination, and a delivery reward.
-3. **A nearby shopper** (e.g. a fellow student already heading to the market or library) sees the request and accepts it.
-4. The shopper purchases the product, delivers it to the customer, and receives the product cost plus the reward.
-5. The customer confirms receipt and completes payment seamlessly via **Demo UPI QR**.
+It solves two primary community problems:
+1. **Local Campus Stores & Merchants**: Allows campus shopkeepers and student entrepreneurs to register their stores and catalog real products with photos and prices.
+2. **Crowdsourced Commute Delivery**: Anyone travelling from a market, canteen, or store can pick up orders for fellow peers on their route, earn delivery rewards, and build a local earnings balance.
+3. **Advance Escrow Payment & Handover OTP**: Eliminates customer refusal/fraud. Customers pay in advance via **UPI QR (`7387157739@upi`)**. Funds are locked in **Platform Escrow** and released to the deliverer's wallet **only when the deliverer verifies the customer's 4-digit Delivery OTP**.
 
 ---
 
 ## ✨ Key Features
 
-### 👤 1. Role-Based Portals & Dashboards
-- **Customer Portal**: Create requests, track active deliveries in real-time, view invoice breakdowns, confirm deliveries, and simulate payments.
-- **Shopper Portal**: Browse available requests with keyword/category search, claim tasks, update step-by-step delivery progress, and monitor cleared vs. pending earnings.
-- **Admin Control Center**: Monitor platform health, oversee all registered users, inspect requests, track orders, and delete test accounts.
+### 🏪 1. Amazon-Style Storefront & Product Catalog
+- **Store Directory (`/shops`)**: Browse registered campus shops by category.
+- **Product Search & Filtering (`/products`)**: Live search, price filters, category tabs, and real-time stock indicators.
+- **Shopping Cart (`/cart`)**: Multi-item cart, automatic subtotal, and delivery fee calculation.
+- **Merchant Hub (`/merchant/shop`)**: Merchants can register their store, manage address/phone, and add/delete products in real-time.
 
-### 🛡️ 2. Step-by-Step Order State Machine
-Enforces strict lifecycle progression:
-$$\text{Pending} \longrightarrow \text{Accepted} \longrightarrow \text{Purchased} \longrightarrow \text{Out for Delivery} \longrightarrow \text{Delivered} \longrightarrow \text{Completed}$$
-- **Atomic Concurrency Protection**: Prevents multiple shoppers from claiming the same shopping request simultaneously.
-- **Delivery Confirmation**: Only the customer who placed the order can mark the delivery as `Completed`.
+### ⚡ 2. Custom Peer Errands
+- Can't find an item in registered stores? Customers can create a **Custom Errand Request** detailing item, shop location, estimated cost, and delivery reward.
 
-### 💳 3. Demo UPI Payment System
-- Displays the shopper's personal UPI ID and QR code image.
-- Transparent price breakdown ($\text{Product Price} + \text{Shopper Reward} = \text{Total Amount}$).
-- One-click copy for UPI VPA and interactive demo payment confirmation.
-- Clearly marked as an academic demo (no real banking credentials required).
+### 🛡️ 3. Advance Payment Escrow & 4-Digit Handover OTP
+- **Advance Payment**: Order is only broadcasted to commuters once advance payment is confirmed.
+- **Customer Secret 4-digit Delivery OTP**: Shown securely in the customer's order tracker.
+- **Anti-Fraud Handover**: Deliverer enters the 4-digit OTP upon physical delivery.
+- **Auto-Wallet Settlement**: Verifying OTP instantly releases the full order amount (product price + delivery fee) into the deliverer's **Wallet Balance**!
 
-### 📱 4. Modern, Responsive UI / UX
-- Emerald green primary theme with warm amber accents.
-- Responsive mobile drawer navigation, clean cards, status badges, and animated progress timeline.
-- One-click **Demo Quick-Fill buttons** on the login page for effortless presentations.
+### 💰 4. Commuter Wallet & Payouts (`/wallet`)
+- Real-time wallet balance tracking.
+- Instant transaction ledger (`#TXN-xxx`).
+- Registered UPI VPA (`7387157739@upi`) for automatic payouts.
+
+### 🔐 5. Dedicated Portals & Role-Based Access Control
+- **Customer Portal**: Store shopping, cart checkout, errand creation, live order tracking with OTP.
+- **Shopper / Merchant Portal**: Store inventory manager, available tasks board, wallet analytics.
+- **Admin Control Center**: System metrics, KYC verification toggle, store directory, escrow fund ledger.
 
 ---
 
@@ -47,138 +48,91 @@ $$\text{Pending} \longrightarrow \text{Accepted} \longrightarrow \text{Purchased
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | HTML5, CSS3 (Modern Flex/Grid & Variables), Vanilla JavaScript |
+| **Frontend** | HTML5, CSS3 (Variables, Flexbox/Grid), Vanilla JavaScript |
 | **Backend** | Python 3, Flask 3.0, Jinja2 Template Engine |
-| **Database** | SQLite3 (Normalized tables with foreign keys and cascading) |
-| **Security** | Werkzeug Password Hashing (`scrypt`), Role-based Session Guards |
-| **Deployment** | Gunicorn WSGI Server, Procfile |
+| **Database** | SQLite3 (`pick4me.db`) with relational foreign keys |
+| **Security** | Werkzeug Password Hashing (`pbkdf2:sha256`), Advance Escrow, 4-digit Delivery OTP |
+| **Payment Integration** | UPI QR Scanner (`7387157739@upi`) |
+| **Production WSGI** | Gunicorn WSGI Server, Procfile |
 
 ---
 
-## 📁 Project Directory Structure
+## 📁 Project Structure
 
 ```text
 Pick4Me/
+├── app.py                      # Core Flask controller & API endpoints
+├── database.py                 # SQLite schema, tables & admin seed
+├── requirements.txt            # Python dependencies (Flask, Werkzeug, Gunicorn)
+├── Procfile                    # WSGI configuration for Render cloud deployment
+├── .gitignore                  # Git ignore rules
+├── README.md                   # Documentation & setup manual
+├── test_workflow.py            # Automated 12-step verification suite
 │
-├── app.py                  # Main Flask application & route controllers
-├── database.py             # SQLite schema initialization & demo seed data
-├── requirements.txt        # Python package dependencies
-├── Procfile                # WSGI deployment configuration (Gunicorn)
-├── .gitignore              # Git ignored files (venv, db, caches)
-├── README.md               # Project documentation & setup manual
-├── test_workflow.py        # Automated end-to-end test suite
+├── templates/                  # Jinja2 HTML Templates
+│   ├── base.html               # Global responsive layout with cart badge & nav
+│   ├── index.html              # Amazon-style marketplace landing page
+│   ├── products.html           # Product catalog with live search & cart
+│   ├── shops.html              # Local campus store directory
+│   ├── shop_detail.html        # Storefront profile & item list
+│   ├── cart.html               # Shopping cart & advance checkout
+│   ├── merchant_shop.html      # Shop profile setup & product catalog manager
+│   ├── wallet.html             # Shopper wallet with ledger & balance
+│   ├── payment.html            # Advance Escrow UPI payment screen with QR
+│   ├── order_details.html      # Live progress tracker & 4-digit OTP handover
+│   ├── customer_dashboard.html # Customer order tracking hub
+│   ├── shopper_dashboard.html  # Commuter deliveries board & task claim
+│   ├── admin_dashboard.html    # Admin panel (KYC, Stores, Escrow ledger)
+│   ├── login.html              # Clean portal login
+│   ├── login_customer.html     # Dedicated customer login
+│   ├── login_shopper.html      # Dedicated commuter/store login
+│   ├── register.html           # Account registration with role selection
+│   └── 404.html                # Friendly error page
 │
-├── templates/              # Jinja2 HTML Templates
-│   ├── base.html           # Base layout with navbar, alerts & footer
-│   ├── index.html          # Homepage (Hero, How It Works, Why Pick4Me, Roadmap)
-│   ├── login.html          # Authentication with 1-click Demo Fill
-│   ├── register.html       # User registration with role selection
-│   ├── customer_dashboard.html # Customer hub & order tracking
-│   ├── shopper_dashboard.html  # Shopper hub & available jobs feed
-│   ├── admin_dashboard.html    # Admin panel for user & order management
-│   ├── create_request.html     # Request creation form with live price calculator
-│   ├── requests.html       # Marketplace & searchable request board
-│   ├── request_details.html    # Request details & Accept Request action
-│   ├── orders.html         # Filterable orders & deliveries list
-│   ├── order_details.html  # Visual progress tracker & step updates
-│   ├── payment.html        # UPI QR Scan & Pay demo interface
-│   ├── earnings.html       # Shopper earnings analytics & task history
-│   ├── profile.html        # Profile management & custom QR upload
-│   └── 404.html            # Friendly error handler page
-│
-└── static/                 # Static Assets
+└── static/                     # Static Assets
     ├── css/
-    │   └── style.css       # Complete responsive styling & design system
+    │   └── style.css           # Clean modern responsive stylesheet
     ├── js/
-    │   └── script.js       # Dynamic totals, clipboard copy, mobile toggle
+    │   └── script.js           # Dynamic totals, clipboard copy, mobile menu
     ├── images/
-    │   ├── logo.svg        # Pick4Me brand vector logo
-    │   ├── logo.png        # Pick4Me brand raster logo
-    │   └── demo_qr.png     # Default UPI QR graphic
-    └── uploads/            # User-uploaded QR code storage
+    │   ├── logo.svg            # Pick4Me vector brand logo
+    │   ├── logo.png            # Pick4Me brand logo
+    │   └── upi_qr.png          # Real UPI QR Code image (7387157739@upi)
+    └── uploads/                # Custom user images
 ```
 
 ---
 
-## 🚀 Local Installation & Setup Guide
-
-### 1. Prerequisites
-- Python 3.8 or higher installed on your machine.
-- Git (optional, for cloning).
-
-### 2. Step-by-Step Commands
+## 🚀 Local Installation & Running
 
 ```bash
 # 1. Navigate to project folder
-cd Pick4Me
+cd /Users/abhishekkanadje7/.gemini/antigravity/scratch/Pick4Me
 
-# 2. Create a virtual environment
-python3 -m venv venv
-
-# 3. Activate the virtual environment
-# On macOS / Linux:
+# 2. Activate virtual environment
 source venv/bin/activate
-# On Windows:
-# venv\Scripts\activate
 
-# 4. Install required dependencies
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# 5. Run the application
+# 4. Run application
 python app.py
 ```
-
-### 3. Open in Browser
-Visit **`http://127.0.0.1:5001`** in any web browser.
-
-> **Note on macOS:** We use port `5001` by default to avoid conflicts with macOS AirPlay Receiver (which reserves port 5000). The SQLite database `pick4me.db` initializes and seeds automatically on the first run!
+Open **`http://127.0.0.1:5001`** in your browser.
 
 ---
 
-## 🔑 Demo Login Credentials
+## 🛡️ Admin Login Credentials
 
-You can log in directly using the credentials below, or click the **One-Click Demo buttons** on the Login page:
-
-| Role | Email | Password | Pre-seeded Profile |
+| Role | Email | Password | Scope |
 |---|---|---|---|
-| 👤 **Customer** | `customer@pick4me.demo` | `customer123` | Priya Sharma (Kaveri Hostel) |
-| 🚴 **Shopper** | `shopper@pick4me.demo` | `shopper123` | Rahul Verma (Campus Central) |
-| 🛡️ **Admin** | `admin@pick4me.demo` | `admin123` | System Administrator |
-
----
-
-## 🔄 Complete Demo Workflow Walkthrough
-
-To demonstrate the full lifecycle to evaluators or during hackathon presentations:
-
-1. **Step 1 - Login as Customer**:
-   - Go to `http://127.0.0.1:5000/login` &rarr; click **👤 Customer**.
-2. **Step 2 - Post a Request**:
-   - Click **+ Create New Request**.
-   - Enter: Product: *Classmate Notebook*, Shop: *ABC Stationery*, Reward: *₹30*.
-   - Submit the form. Status becomes `Pending`.
-3. **Step 3 - Switch to Shopper**:
-   - Log out, then log in using **🚴 Shopper**.
-4. **Step 4 - Accept Request**:
-   - Open **Find Requests**, select the Notebook request, and click **Accept Request**.
-   - Status changes to `Accepted` and an Order is generated.
-5. **Step 5 - Update Delivery Milestones**:
-   - Click **Mark as Purchased** &rarr; status becomes `Purchased`.
-   - Click **Mark as Out for Delivery** &rarr; status becomes `Out for Delivery`.
-   - Click **Mark as Delivered** &rarr; status becomes `Delivered`.
-6. **Step 6 - Customer Confirms & Pays**:
-   - Log back in as **Customer**.
-   - Open the Order &rarr; click **Pay via UPI** to view the Demo QR and confirm payment.
-   - Click **Confirm Delivery**.
-   - Status transitions to `Completed`.
-7. **Step 7 - Verify Earnings**:
-   - Log in as **Shopper** &rarr; open **Earnings**. The reward (₹30) is now cleared in Total Earnings!
+| 🛡️ **System Administrator** | `abhishekkanadje7@gmail.com` | `Abhi*2007` | Full Platform Oversight & KYC Control |
 
 ---
 
 ## 🧪 Automated Testing
 
-Run the automated test suite to verify the entire system in under 2 seconds:
+Run the automated test suite:
 
 ```bash
 python test_workflow.py
@@ -186,30 +140,5 @@ python test_workflow.py
 
 ---
 
-## ☁️ Deployment Instructions
-
-### Deploying to Render.com / Railway
-1. Push your repository to GitHub.
-2. Log into [Render.com](https://render.com) & click **New Web Service**.
-3. Select your GitHub repository.
-4. Configure settings:
-   - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn app:app`
-5. Click **Deploy Web Service**.
-
----
-
-## 🔮 Future Scope & Roadmap
-
-- [ ] **Real Payment Gateway Integration**: Automated escrow via Razorpay / Paytm APIs.
-- [ ] **Interactive Maps**: Real-time Google Maps integration with route planning.
-- [ ] **Live GPS Tracking**: Shopper live location sharing during transit.
-- [ ] **Push & WhatsApp Notifications**: Instant alerts when status changes.
-- [ ] **Native Mobile Application**: Cross-platform Flutter / React Native client.
-- [ ] **Shopper Ratings & Reviews**: Community trust scores and badges.
-
----
-
 ## 📄 License
-Academic Mini-Project Demo &copy; 2026 Pick4Me. Built for education and community commerce.
+Academic Mini-Project &copy; 2026 Pick4Me.

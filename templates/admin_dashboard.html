@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Dashboard - Pick4Me{% endblock %}
+{% block title %}Admin Control Center - Pick4Me{% endblock %}
 
 {% block content %}
 <div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
@@ -9,7 +9,7 @@
     <div>
       <span class="badge badge-admin" style="margin-bottom: 0.4rem;">System Administration</span>
       <h1>Admin Control Center 🛡️</h1>
-      <p>System-wide metrics, user directory, shopping requests, and delivery overview.</p>
+      <p>System-wide metrics, KYC user verification, registered shops, and escrow ledger.</p>
     </div>
   </div>
 
@@ -24,31 +24,23 @@
     </div>
 
     <div class="stat-card">
-      <div class="stat-icon stat-icon-blue">👤</div>
+      <div class="stat-icon stat-icon-blue">🏪</div>
       <div class="stat-content">
-        <h3>{{ stats.customers }}</h3>
-        <p>Customers</p>
+        <h3>{{ stats.total_shops }}</h3>
+        <p>Registered Stores</p>
       </div>
     </div>
 
     <div class="stat-card">
-      <div class="stat-icon stat-icon-orange">🚴</div>
+      <div class="stat-icon stat-icon-orange">📦</div>
       <div class="stat-content">
-        <h3>{{ stats.shoppers }}</h3>
-        <p>Shoppers</p>
+        <h3>{{ stats.total_products }}</h3>
+        <p>Total Products</p>
       </div>
     </div>
 
     <div class="stat-card">
-      <div class="stat-icon stat-icon-green">🛍️</div>
-      <div class="stat-content">
-        <h3>{{ stats.requests }}</h3>
-        <p>Total Requests</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-orange">🛵</div>
+      <div class="stat-icon stat-icon-green">🛵</div>
       <div class="stat-content">
         <h3>{{ stats.active_orders }}</h3>
         <p>Active Orders</p>
@@ -62,25 +54,24 @@
         <p>Completed Orders</p>
       </div>
     </div>
+
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-purple">₹</div>
+      <div class="stat-content">
+        <h3>₹{{ "%.2f"|format(stats.escrow_funds) }}</h3>
+        <p>Escrow Funds Held</p>
+      </div>
+    </div>
   </div>
 
-  <!-- 1. Registered Users Table -->
+  <!-- 1. Registered Users & KYC Verification Table -->
   <div class="card" style="margin-bottom: 2rem;">
     <div class="card-header">
-      <h3 class="card-title">👥 Registered Users Management</h3>
-      <div style="max-width: 250px;">
-        <input
-          type="text"
-          id="tableSearchInput"
-          class="form-control"
-          placeholder="🔍 Search users..."
-          style="padding: 0.35rem 0.75rem; font-size: 0.85rem;"
-        >
-      </div>
+      <h3 class="card-title">👥 Registered Users & KYC Status</h3>
     </div>
 
     <div class="table-responsive">
-      <table class="custom-table searchable-table">
+      <table class="custom-table">
         <thead>
           <tr>
             <th>User ID</th>
@@ -88,8 +79,8 @@
             <th>Email</th>
             <th>Phone</th>
             <th>Role</th>
-            <th>Location</th>
-            <th>Registered</th>
+            <th>Verification</th>
+            <th>Wallet Balance</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -100,20 +91,24 @@
               <td><strong>{{ u.name }}</strong></td>
               <td>{{ u.email }}</td>
               <td>{{ u.phone }}</td>
+              <td><span class="badge badge-{{ u.role }}">{{ u.role }}</span></td>
               <td>
-                <span class="badge badge-{{ u.role }}">{{ u.role }}</span>
+                {% if u.is_verified %}
+                  <span class="badge badge-completed">✓ Verified</span>
+                {% else %}
+                  <span class="badge badge-cancelled">Pending KYC</span>
+                {% endif %}
               </td>
-              <td style="font-size: 0.85rem;">{{ u.location }}</td>
-              <td style="font-size: 0.85rem; color: var(--text-muted);">{{ u.created_at[:10] }}</td>
+              <td style="font-weight: 700; color: var(--primary);">₹{{ "%.2f"|format(u.wallet_balance) }}</td>
               <td>
                 {% if u.id != session.get('user_id') %}
-                  <form method="POST" action="{{ url_for('admin_delete_user', id=u.id) }}" onsubmit="return confirm('Are you sure you want to delete user {{ u.name }}?');" style="display: inline;">
-                    <button type="submit" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-                      Delete
+                  <form method="POST" action="{{ url_for('toggle_user_verification', id=u.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                      Toggle Verify
                     </button>
                   </form>
                 {% else %}
-                  <span style="font-size: 0.75rem; color: var(--text-muted);">Current User</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Root Admin</span>
                 {% endif %}
               </td>
             </tr>
@@ -123,37 +118,36 @@
     </div>
   </div>
 
-  <!-- 2. Recent Requests Oversight -->
+  <!-- 2. Registered Shops Directory -->
   <div class="card" style="margin-bottom: 2rem;">
     <div class="card-header">
-      <h3 class="card-title">🛍️ Recent Shopping Requests</h3>
-      <a href="{{ url_for('available_requests') }}" class="btn btn-sm btn-outline">View All Requests</a>
+      <h3 class="card-title">🏪 Registered Campus Stores</h3>
     </div>
 
     <div class="table-responsive">
       <table class="custom-table">
         <thead>
           <tr>
-            <th>Req ID</th>
-            <th>Product</th>
-            <th>Customer</th>
-            <th>Shop</th>
-            <th>Reward</th>
-            <th>Status</th>
+            <th>Shop ID</th>
+            <th>Shop Name</th>
+            <th>Category</th>
+            <th>Owner</th>
+            <th>Address</th>
+            <th>Phone</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {% for r in requests %}
+          {% for s in shops %}
             <tr>
-              <td>#REQ-{{ r.id }}</td>
-              <td><strong>{{ r.product_name }}</strong></td>
-              <td>{{ r.customer_name }}</td>
-              <td>{{ r.shop_name }}</td>
-              <td style="font-weight: 700; color: var(--primary);">+₹{{ "%.2f"|format(r.reward) }}</td>
-              <td><span class="badge badge-{{ r.status|lower|replace(' ', '-') }}">{{ r.status }}</span></td>
+              <td>#SHP-{{ s.id }}</td>
+              <td><strong>{{ s.shop_name }}</strong></td>
+              <td><span class="badge badge-customer">{{ s.category }}</span></td>
+              <td>{{ s.owner_name }}</td>
+              <td>{{ s.address }}</td>
+              <td>{{ s.phone }}</td>
               <td>
-                <a href="{{ url_for('request_details', id=r.id) }}" class="btn btn-sm btn-outline-primary">Details</a>
+                <a href="{{ url_for('shop_detail', id=s.id) }}" class="btn btn-sm btn-outline-primary">Visit Store</a>
               </td>
             </tr>
           {% endfor %}
@@ -162,11 +156,10 @@
     </div>
   </div>
 
-  <!-- 3. Recent Orders Oversight -->
+  <!-- 3. Recent Orders & Escrow Log -->
   <div class="card">
     <div class="card-header">
-      <h3 class="card-title">📦 Recent Orders & Deliveries</h3>
-      <a href="{{ url_for('orders_list') }}" class="btn btn-sm btn-outline">View All Orders</a>
+      <h3 class="card-title">📦 Recent Orders & Escrow Settlement</h3>
     </div>
 
     <div class="table-responsive">
@@ -174,11 +167,12 @@
         <thead>
           <tr>
             <th>Order ID</th>
-            <th>Product</th>
+            <th>Items</th>
             <th>Customer</th>
-            <th>Shopper</th>
-            <th>Total Value</th>
-            <th>Status</th>
+            <th>Deliverer</th>
+            <th>Amount</th>
+            <th>Escrow Status</th>
+            <th>Delivery Status</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -186,10 +180,15 @@
           {% for o in orders %}
             <tr>
               <td>#ORD-{{ o.id }}</td>
-              <td><strong>{{ o.product_name }}</strong></td>
+              <td><strong>{{ o.items_summary }}</strong></td>
               <td>{{ o.customer_name }}</td>
-              <td>{{ o.shopper_name }}</td>
+              <td>{{ o.shopper_name or 'Unassigned' }}</td>
               <td>₹{{ "%.2f"|format(o.total_amount) }}</td>
+              <td>
+                <span class="badge {% if o.payment_status == 'Escrow_Held' %}badge-pending{% elif o.payment_status == 'Released_To_Shopper' %}badge-completed{% else %}badge-cancelled{% endif %}">
+                  {{ o.payment_status }}
+                </span>
+              </td>
               <td><span class="badge badge-{{ o.status|lower|replace(' ', '-') }}">{{ o.status }}</span></td>
               <td>
                 <a href="{{ url_for('order_details', id=o.id) }}" class="btn btn-sm btn-outline-primary">Details</a>

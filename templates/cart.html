@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Shopping Cart - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="margin-bottom: 2rem;">
+    <span class="badge badge-customer" style="margin-bottom: 0.4rem;">Checkout</span>
+    <h1>Your Shopping Cart 🛒</h1>
+    <p>Review selected store items and confirm delivery address.</p>
+  </div>
+
+  {% if items %}
+  <div style="display: grid; grid-template-columns: 1.4fr 0.8fr; gap: 2rem; align-items: flex-start;">
+    
+    <!-- Left Column: Cart Items -->
+    <div class="card" style="padding: 1.75rem;">
+      <h3 style="margin-bottom: 1.25rem; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+        Items in Cart ({{ items|length }})
+      </h3>
+
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        {% for item in items %}
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+            <div>
+              <h4 style="margin-bottom: 0.25rem; font-size: 1.05rem;">{{ item.product_name }}</h4>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
+                🏪 Store: <strong>{{ item.shop_name }}</strong> ({{ item.shop_address }})
+              </div>
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary);">
+                ₹{{ "%.2f"|format(item.price) }} &times; {{ item.quantity }}
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 1.25rem;">
+              <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-main);">
+                ₹{{ "%.2f"|format(item.price * item.quantity) }}
+              </div>
+              <form method="POST" action="{{ url_for('remove_from_cart', id=item.id) }}">
+                <button type="submit" class="btn btn-sm btn-outline" style="color: var(--danger); border-color: #FECACA;" title="Remove Item">
+                  ✕
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <a href="{{ url_for('products_catalog') }}" style="font-size: 0.9rem;">&larr; Add More Items</a>
+        <div style="font-size: 1.1rem; font-weight: 700;">
+          Subtotal: ₹{{ "%.2f"|format(subtotal) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Delivery Details & Advance Checkout -->
+    <div class="card" style="padding: 1.75rem; background: #FFFFFF; box-shadow: var(--shadow-md);">
+      <h3 style="margin-bottom: 1.25rem; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+        Order & Delivery Summary
+      </h3>
+
+      <form method="POST" action="{{ url_for('checkout_cart') }}">
+        
+        <div class="form-group">
+          <label for="delivery_address" class="form-label">Delivery Destination *</label>
+          <input
+            type="text"
+            id="delivery_address"
+            name="delivery_address"
+            class="form-control"
+            placeholder="e.g. Kaveri Hostel, Room 204"
+            value="{{ user.location if user else '' }}"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="phone" class="form-label">Contact Phone *</label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            class="form-control"
+            placeholder="+91 98765 43210"
+            value="{{ user.phone if user else '' }}"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="instructions" class="form-label">Delivery Instructions (Optional)</label>
+          <textarea
+            id="instructions"
+            name="instructions"
+            class="form-control"
+            rows="2"
+            placeholder="e.g. Please hand over to roommate or call upon gate arrival."
+          ></textarea>
+        </div>
+
+        <!-- Bill Breakdown Box -->
+        <div style="background: var(--bg-main); border-radius: var(--radius-md); padding: 1rem; margin: 1.25rem 0;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.9rem;">
+            <span>Items Subtotal:</span>
+            <span>₹{{ "%.2f"|format(subtotal) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
+            <span>Peer Delivery Reward:</span>
+            <span style="color: var(--primary); font-weight: 600;">+₹{{ "%.2f"|format(delivery_fee) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 0.5rem; color: var(--primary-dark);">
+            <span>Total Payable:</span>
+            <span>₹{{ "%.2f"|format(total) }}</span>
+          </div>
+        </div>
+
+        <div style="background: var(--primary-subtle); border: 1px solid var(--primary-light); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--primary-dark); margin-bottom: 1.25rem;">
+          🛡️ <strong>Advance Escrow Protected:</strong> Funds are locked safely until you receive your items and share your 4-digit OTP.
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg">
+          💳 Proceed to Advance Payment &rarr;
+        </button>
+      </form>
+    </div>
+
+  </div>
+  {% else %}
+  <div class="card text-center" style="padding: 4rem 1.5rem;">
+    <div style="font-size: 3.5rem; margin-bottom: 1rem;">🛒</div>
+    <h2>Your Cart is Currently Empty</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Browse registered campus shops and add products to your cart.</p>
+    <a href="{{ url_for('products_catalog') }}" class="btn btn-primary btn-lg">Browse Products Now</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

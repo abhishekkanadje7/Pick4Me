@@ -1,81 +1,46 @@
 {% extends "base.html" %}
 
-{% block title %}Shopper Dashboard - Pick4Me{% endblock %}
+{% block title %}Commuter & Deliveries Dashboard - Pick4Me{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
   
   <!-- Welcome Banner -->
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
     <div>
-      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Shopper Partner Portal</span>
-      <h1>Welcome, {{ session.get('user_name', 'Shopper') }}! 🚴</h1>
-      <p style="margin: 0;">Pick up shopping requests nearby, deliver to peers, and earn instant rewards.</p>
+      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Commuter & Merchant Hub</span>
+      <h1>Welcome, {{ session.get('user_name', 'Shopper') }}! 🚴🏪</h1>
+      <p style="margin: 0;">Pick up orders on your commute or manage your registered shop catalog.</p>
     </div>
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-      <a href="{{ url_for('available_requests') }}" class="btn btn-primary">🔍 Find Available Requests</a>
-      <a href="{{ url_for('shopper_earnings') }}" class="btn btn-outline">💰 My Earnings</a>
+      <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-accent">🏪 My Store ({{ products_count }} Items)</a>
+      <a href="{{ url_for('wallet_dashboard') }}" class="btn btn-primary">💰 Wallet (₹{{ "%.2f"|format(user.wallet_balance) }})</a>
     </div>
   </div>
 
-  <!-- Metric Cards -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-green">📋</div>
-      <div class="stat-content">
-        <h3>{{ available_requests_count }}</h3>
-        <p>Available Requests</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-orange">🛵</div>
-      <div class="stat-content">
-        <h3>{{ active_deliveries_count }}</h3>
-        <p>Active Deliveries</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-blue">📦</div>
-      <div class="stat-content">
-        <h3>{{ completed_deliveries_count }}</h3>
-        <p>Completed Deliveries</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-purple">₹</div>
-      <div class="stat-content">
-        <h3>₹{{ "%.2f"|format(total_earnings) }}</h3>
-        <p>Total Cleared Earnings</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Active Deliveries Section (In Progress) -->
+  <!-- Active Deliveries in Progress -->
   {% if active_deliveries %}
-  <div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--accent);">
-    <div class="card-header">
-      <h3 class="card-title">🛵 Your Active Deliveries in Progress</h3>
-      <a href="{{ url_for('orders_list', status='active') }}" class="btn btn-sm btn-outline">View All Active &rarr;</a>
+  <div class="card" style="margin-bottom: 2.5rem; border-left: 5px solid var(--accent); background: #FFFBEB;">
+    <div class="card-header" style="border-color: #FDE68A;">
+      <h3 class="card-title" style="color: var(--accent-dark);">🛵 Active Deliveries You Are Handling ({{ active_deliveries|length }})</h3>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
       {% for order in active_deliveries %}
-        <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; background: var(--bg-main);">
+        <div style="border: 1px solid #FDE68A; border-radius: var(--radius-md); padding: 1.25rem; background: #FFFFFF;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
             <span class="badge badge-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
-            <span style="font-weight: 800; color: var(--primary); font-size: 1.1rem;">+₹{{ "%.2f"|format(order.reward) }} Reward</span>
+            <span style="font-weight: 800; color: var(--primary); font-size: 1.15rem;">
+              ₹{{ "%.2f"|format(order.total_amount) }} <span style="font-size: 0.7rem; color: var(--text-muted);">Payout</span>
+            </span>
           </div>
 
-          <h4 style="margin-bottom: 0.35rem;">{{ order.product_name }}</h4>
-          <p style="font-size: 0.85rem; margin-bottom: 0.25rem;">🏪 <strong>Shop:</strong> {{ order.shop_name }} ({{ order.shop_address }})</p>
-          <p style="font-size: 0.85rem; margin-bottom: 0.25rem;">📍 <strong>Deliver:</strong> {{ order.delivery_address }}</p>
-          <p style="font-size: 0.85rem; margin-bottom: 0.5rem;">👤 <strong>Customer:</strong> {{ order.customer_name }} ({{ order.customer_phone }})</p>
+          <h4 style="margin-bottom: 0.35rem;">{{ order.items_summary }}</h4>
+          <p style="font-size: 0.85rem; margin-bottom: 0.25rem;">📍 <strong>Deliver to:</strong> {{ order.delivery_address }}</p>
+          <p style="font-size: 0.85rem; margin-bottom: 0.75rem;">👤 <strong>Customer:</strong> {{ order.customer_name }} ({{ order.customer_phone }})</p>
 
-          <a href="{{ url_for('order_details', id=order.id) }}" class="btn btn-sm btn-primary btn-block" style="margin-top: 0.75rem;">
-            Update Status & View Details &rarr;
+          <a href="{{ url_for('order_details', id=order.id) }}" class="btn btn-sm btn-primary btn-block">
+            Update Status / Enter Handover OTP &rarr;
           </a>
         </div>
       {% endfor %}
@@ -83,50 +48,58 @@
   </div>
   {% endif %}
 
-  <!-- Available Requests Feed -->
+  <!-- Available Orders & Tasks (Advance Escrow Paid) -->
   <div class="card">
     <div class="card-header">
-      <h3 class="card-title">⚡ Available Shopping Requests Nearby</h3>
-      <a href="{{ url_for('available_requests') }}" class="btn btn-sm btn-outline-primary">Browse All Requests &rarr;</a>
+      <div>
+        <h3 class="card-title">⚡ Available Delivery Tasks (Advance Escrow Paid)</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">These orders are already paid by customers. Pick them up and deliver to earn!</p>
+      </div>
+      <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary);">
+        {{ available_tasks|length }} Tasks Open
+      </div>
     </div>
 
-    {% if available_requests %}
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
-      {% for req in available_requests %}
-        <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; transition: var(--transition);" class="hover-shadow">
+    {% if available_tasks %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+      {% for task in available_tasks %}
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--border-color); background: var(--bg-main);">
           <div>
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-              <span class="badge badge-pending">{{ req.category }}</span>
-              <span style="font-weight: 800; color: var(--primary); font-size: 1.15rem;">+₹{{ "%.0f"|format(req.reward) }}</span>
+              <span class="badge badge-completed">Escrow Paid</span>
+              <span style="font-weight: 800; color: var(--primary); font-size: 1.25rem;">
+                +₹{{ "%.2f"|format(task.delivery_fee) }} <span style="font-size: 0.7rem; color: var(--text-muted);">Reward</span>
+              </span>
             </div>
 
-            <h4 style="margin-bottom: 0.4rem; color: var(--text-main);">{{ req.product_name }}</h4>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-              🏪 <strong>Shop:</strong> {{ req.shop_name }}
-            </p>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-              📍 <strong>Area:</strong> {{ req.shop_address }}
-            </p>
+            <h3 style="font-size: 1.15rem; margin-bottom: 0.35rem;">{{ task.items_summary }}</h3>
+            {% if task.shop_name %}
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+                🏪 <strong>Pickup Store:</strong> {{ task.shop_name }} ({{ task.shop_address }})
+              </p>
+            {% endif %}
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-              🎯 <strong>Deliver to:</strong> {{ req.delivery_address }}
+              📍 <strong>Delivery Address:</strong> {{ task.delivery_address }}
             </p>
             <p style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.75rem;">
-              Posted by {{ req.customer_name }} • {{ req.created_at[:16] }}
+              Requested by {{ task.customer_name }} • Total Order: ₹{{ "%.2f"|format(task.total_amount) }}
             </p>
           </div>
 
-          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-            <a href="{{ url_for('request_details', id=req.id) }}" class="btn btn-sm btn-primary btn-block">
-              View & Accept Request
-            </a>
-          </div>
+          <form method="POST" action="{{ url_for('accept_delivery_task', id=task.id) }}" onsubmit="return confirm('Accept this delivery task?');">
+            <button type="submit" class="btn btn-primary btn-block">
+              🚴 Claim Delivery (+₹{{ "%.2f"|format(task.delivery_fee) }})
+            </button>
+          </form>
         </div>
       {% endfor %}
     </div>
     {% else %}
-    <div style="text-align: center; padding: 3rem 1rem;">
-      <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 0.5rem;">No pending shopping requests at the moment.</p>
-      <p style="font-size: 0.9rem; color: var(--text-light);">Check back shortly as new customer requests are posted regularly!</p>
+    <div style="text-align: center; padding: 4rem 1.5rem;">
+      <div style="font-size: 3rem; margin-bottom: 0.5rem;">🛵</div>
+      <h3>No Pending Delivery Tasks Right Now</h3>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">New customer orders will appear here in real-time once advance payment is confirmed.</p>
+      <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-outline-primary">Manage Your Shop Inventory</a>
     </div>
     {% endif %}
   </div>

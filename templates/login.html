@@ -1,14 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Login - Pick4Me{% endblock %}
+{% block title %}Sign In - Pick4Me{% endblock %}
 
 {% block content %}
 <div class="container container-narrow" style="padding-top: 3rem; padding-bottom: 4rem;">
   <div class="card" style="padding: 2.5rem; max-width: 520px; margin: 0 auto; box-shadow: var(--shadow-lg);">
     
     <div style="text-align: center; margin-bottom: 1.75rem;">
-      <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Welcome Back</h2>
-      <p style="font-size: 0.95rem;">Log in to access your Pick4Me dashboard</p>
+      <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Welcome to Pick4Me</h2>
+      <p style="font-size: 0.95rem;">Log in to access your dashboard</p>
+    </div>
+
+    <!-- Dual Login Switcher Pills -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.75rem; background: var(--bg-main); padding: 0.35rem; border-radius: var(--radius-md);">
+      <a href="{{ url_for('login_customer') }}" class="btn btn-sm btn-outline" style="text-align: center; border: none; background: #FFF; font-weight: 700;">
+        👤 Customer
+      </a>
+      <a href="{{ url_for('login_shopper') }}" class="btn btn-sm btn-outline" style="text-align: center; border: none;">
+        🚴 Shopper / Store
+      </a>
     </div>
 
     <form method="POST" action="{{ url_for('login') }}">
@@ -19,8 +29,7 @@
           id="login_email"
           name="email"
           class="form-control"
-          placeholder="e.g. customer@pick4me.demo"
-          value="{{ email or '' }}"
+          placeholder="e.g. name@campus.edu"
           required
           autofocus
         >
@@ -38,13 +47,13 @@
         >
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem; padding: 0.85rem;">
-        Log In
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem; padding: 0.85rem; font-size: 1rem;">
+        Log In &rarr;
       </button>
     </form>
 
     <div style="margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); text-align: center; font-size: 0.9rem;">
-      Don't have an account yet?
+      New to Pick4Me?
       <a href="{{ url_for('register') }}" style="font-weight: 700;">Create an Account</a>
     </div>
   </div>

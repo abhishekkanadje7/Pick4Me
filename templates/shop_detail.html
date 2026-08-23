@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}{{ shop.shop_name }} - Pick4Me Storefront{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="margin-bottom: 1.5rem;">
+    <a href="{{ url_for('shops_directory') }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Back to All Shops</a>
+  </div>
+
+  <!-- Shop Header Banner Card -->
+  <div class="card" style="padding: 2.25rem; margin-bottom: 2.5rem; border-top: 6px solid var(--primary);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <span class="badge badge-customer">{{ shop.category }}</span>
+          {% if shop.owner_verified %}
+            <span class="badge badge-completed">✓ Verified Merchant</span>
+          {% endif %}
+        </div>
+        <h1 style="font-size: 2.25rem; margin-bottom: 0.5rem;">{{ shop.shop_name }}</h1>
+        <p style="font-size: 1rem; color: var(--text-main); margin-bottom: 0.5rem;">
+          📍 <strong>Address:</strong> {{ shop.address }} {% if shop.landmark %}(Landmark: {{ shop.landmark }}){% endif %}
+        </p>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0;">
+          📞 <strong>Contact Phone:</strong> {{ shop.phone }} &nbsp;|&nbsp; <strong>Owner:</strong> {{ shop.owner_name }}
+        </p>
+      </div>
+
+      <div>
+        <a href="{{ url_for('view_cart') }}" class="btn btn-primary btn-lg">
+          🛒 View Cart (<span class="cart-pill-count" style="display: inline;">{{ cart_count }}</span>)
+        </a>
+      </div>
+    </div>
+
+    {% if shop.description %}
+      <div style="margin-top: 1.25rem; background: var(--bg-main); padding: 1rem; border-radius: var(--radius-md); font-size: 0.95rem; color: var(--text-main);">
+        💬 {{ shop.description }}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Products Catalog from this Store -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <h2>Store Products Catalog</h2>
+    <span style="color: var(--text-muted); font-size: 0.95rem;">{{ products|length }} Available Items</span>
+  </div>
+
+  {% if products %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem;">
+    {% for product in products %}
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 1.25rem;">
+        <div>
+          <span class="badge badge-pending" style="font-size: 0.7rem; margin-bottom: 0.5rem;">{{ product.category }}</span>
+          <h3 style="font-size: 1.15rem; margin-bottom: 0.35rem;">{{ product.name }}</h3>
+          {% if product.description %}
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">{{ product.description }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin: 0.75rem 0; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--text-main);">
+              ₹{{ "%.2f"|format(product.price) }}
+            </div>
+            {% if product.in_stock %}
+              <span class="badge badge-completed" style="font-size: 0.65rem;">In Stock</span>
+            {% else %}
+              <span class="badge badge-cancelled" style="font-size: 0.65rem;">Out of Stock</span>
+            {% endif %}
+          </div>
+
+          {% if session.get('user_role') == 'customer' %}
+            <form method="POST" action="{{ url_for('add_to_cart') }}">
+              <input type="hidden" name="product_id" value="{{ product.id }}">
+              <button type="submit" class="btn btn-primary btn-block">
+                🛒 Add to Cart
+              </button>
+            </form>
+          {% elif not session.get('user_id') %}
+            <a href="{{ url_for('login_customer') }}" class="btn btn-primary btn-block">
+              Log in to Order
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card text-center" style="padding: 3rem 1.5rem;">
+    <p style="font-size: 1.1rem; color: var(--text-muted);">No products currently listed by this store.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

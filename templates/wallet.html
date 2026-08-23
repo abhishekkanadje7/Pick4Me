@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}My Earnings Wallet - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Financial Overview</span>
+      <h1>My Earnings & Payout Wallet 💰</h1>
+      <p>Automatic escrow credits from completed deliveries and store product sales.</p>
+    </div>
+
+    <div>
+      <a href="{{ url_for('profile') }}" class="btn btn-outline">⚙️ Manage UPI Payout ID</a>
+    </div>
+  </div>
+
+  <!-- Wallet Summary Cards -->
+  <div class="stats-grid">
+    <div class="stat-card" style="border-top: 4px solid var(--primary); padding: 1.5rem;">
+      <div class="stat-icon stat-icon-green" style="font-size: 2rem;">₹</div>
+      <div class="stat-content">
+        <h3 style="font-size: 2rem; color: var(--primary-dark);">₹{{ "%.2f"|format(user.wallet_balance) }}</h3>
+        <p style="font-weight: 600; color: var(--text-main);">Available Wallet Balance</p>
+      </div>
+    </div>
+
+    <div class="stat-card" style="border-top: 4px solid var(--accent); padding: 1.5rem;">
+      <div class="stat-icon stat-icon-orange">📱</div>
+      <div class="stat-content">
+        <h3 style="font-size: 1.15rem; font-family: monospace;">{{ user.upi_id or '7387157739@upi' }}</h3>
+        <p style="font-weight: 600; color: var(--text-main);">Registered Payout UPI VPA</p>
+      </div>
+    </div>
+
+    <div class="stat-card" style="border-top: 4px solid #3B82F6; padding: 1.5rem;">
+      <div class="stat-icon stat-icon-blue">🛡️</div>
+      <div class="stat-content">
+        <h3 style="font-size: 1.15rem;">Auto-Escrow Settlement</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Credits instantly upon Delivery OTP verification</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transactions Ledger Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">📜 Wallet Transactions History</h3>
+      <div style="font-size: 0.85rem; color: var(--text-muted);">{{ transactions|length }} Records</div>
+    </div>
+
+    {% if transactions %}
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Txn ID</th>
+            <th>Date & Time</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tx in transactions %}
+            <tr>
+              <td>#TXN-{{ tx.id }}</td>
+              <td style="font-size: 0.85rem; color: var(--text-muted);">{{ tx.created_at[:16] }}</td>
+              <td><strong>{{ tx.description }}</strong></td>
+              <td><span class="badge badge-customer">{{ tx.type }}</span></td>
+              <td style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">
+                +₹{{ "%.2f"|format(tx.amount) }}
+              </td>
+              <td><span class="badge badge-completed">Settled</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3.5rem 1.5rem;">
+      <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">No transactions in your wallet yet.</p>
+      <a href="{{ url_for('shopper_dashboard') }}" class="btn btn-primary">Find Available Deliveries & Start Earning</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

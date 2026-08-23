@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Products Catalog - Pick4Me Local Marketplace{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <span class="badge badge-customer" style="margin-bottom: 0.4rem;">Marketplace Catalog</span>
+      <h1>Browse Campus Products</h1>
+      <p>Items available in real-time from registered local stores.</p>
+    </div>
+
+    <div>
+      <a href="{{ url_for('view_cart') }}" class="btn btn-primary">
+        🛒 View Cart (<span class="cart-pill-count" style="display: inline;">{{ cart_count }}</span>)
+      </a>
+    </div>
+  </div>
+
+  <!-- Filter & Search Bar -->
+  <div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
+    <form method="GET" action="{{ url_for('products_catalog') }}" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+      <div style="flex: 1; min-width: 250px;">
+        <input
+          type="text"
+          name="q"
+          class="form-control"
+          placeholder="🔍 Search product title, store name, or description..."
+          value="{{ current_query or '' }}"
+        >
+      </div>
+
+      {% if categories %}
+      <div style="min-width: 180px;">
+        <select name="category" class="form-control">
+          <option value="all">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-primary">Filter</button>
+      {% if current_query or current_category != 'all' %}
+        <a href="{{ url_for('products_catalog') }}" class="btn btn-outline">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Products Grid -->
+  {% if products %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem;">
+    {% for product in products %}
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 1.25rem;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <span class="badge badge-pending" style="font-size: 0.7rem;">{{ product.category }}</span>
+            <a href="{{ url_for('shop_detail', id=product.shop_id) }}" style="font-size: 0.75rem; font-weight: 600; color: var(--primary-dark);">
+              🏪 {{ product.shop_name }}
+            </a>
+          </div>
+
+          <h3 style="font-size: 1.15rem; margin-bottom: 0.35rem;">{{ product.name }}</h3>
+          {% if product.description %}
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">{{ product.description }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin: 0.75rem 0; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--text-main);">
+              ₹{{ "%.2f"|format(product.price) }}
+            </div>
+            {% if product.in_stock %}
+              <span class="badge badge-completed" style="font-size: 0.65rem;">In Stock</span>
+            {% else %}
+              <span class="badge badge-cancelled" style="font-size: 0.65rem;">Out of Stock</span>
+            {% endif %}
+          </div>
+
+          {% if session.get('user_role') == 'customer' %}
+            <form method="POST" action="{{ url_for('add_to_cart') }}">
+              <input type="hidden" name="product_id" value="{{ product.id }}">
+              <button type="submit" class="btn btn-primary btn-block">
+                🛒 Add to Cart
+              </button>
+            </form>
+          {% elif not session.get('user_id') %}
+            <a href="{{ url_for('login_customer') }}" class="btn btn-primary btn-block">
+              Log in to Order
+            </a>
+          {% else %}
+            <span style="font-size: 0.8rem; color: var(--text-muted); display: block; text-align: center;">Logged in as Shopper/Admin</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card text-center" style="padding: 4rem 1.5rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🛍️</div>
+    <h3>No products matching your search</h3>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Try searching for another item or post a custom errand.</p>
+    <a href="{{ url_for('create_custom_request') }}" class="btn btn-primary">Post Custom Errand Request</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

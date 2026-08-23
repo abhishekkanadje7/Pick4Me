@@ -3,119 +3,90 @@
 {% block title %}Customer Dashboard - Pick4Me{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
   
-  <!-- Welcome Banner -->
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
     <div>
       <span class="badge badge-customer" style="margin-bottom: 0.4rem;">Customer Portal</span>
       <h1>Welcome, {{ session.get('user_name', 'Customer') }}! 👋</h1>
-      <p style="margin: 0;">Manage your product requests and track live deliveries in real time.</p>
+      <p style="margin: 0;">Track active store orders and custom errands.</p>
     </div>
+
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-      <a href="{{ url_for('create_request') }}" class="btn btn-primary">🛍️ + Create New Request</a>
-      <a href="{{ url_for('orders_list') }}" class="btn btn-outline">📦 My Orders</a>
+      <a href="{{ url_for('products_catalog') }}" class="btn btn-primary">🛍️ Browse Store Products</a>
+      <a href="{{ url_for('create_custom_request') }}" class="btn btn-accent">⚡ Post Custom Errand</a>
     </div>
   </div>
 
-  <!-- Metric Cards -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-orange">📝</div>
-      <div class="stat-content">
-        <h3>{{ active_requests_count }}</h3>
-        <p>Pending Requests</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-blue">🚴</div>
-      <div class="stat-content">
-        <h3>{{ active_orders_count }}</h3>
-        <p>Active Deliveries</p>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-green">✅</div>
-      <div class="stat-content">
-        <h3>{{ completed_orders_count }}</h3>
-        <p>Completed Orders</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Active Orders in Progress (Live Tracking Section) -->
+  <!-- Active Orders Section (with OTP prominent) -->
   {% if active_orders %}
-  <div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--accent);">
+  <div class="card" style="margin-bottom: 2.5rem; border-left: 5px solid var(--primary);">
     <div class="card-header">
-      <h3 class="card-title">🚀 Active Orders in Progress (Action Required)</h3>
+      <h3 class="card-title">🚀 Active Orders in Progress</h3>
       <a href="{{ url_for('orders_list', status='active') }}" class="btn btn-sm btn-outline">View All Active &rarr;</a>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
       {% for order in active_orders %}
         <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; background: var(--bg-main);">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
             <span class="badge badge-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
-            <span style="font-weight: 700; color: var(--primary);">₹{{ "%.2f"|format(order.total_amount) }}</span>
+            <span style="font-weight: 800; color: var(--primary); font-size: 1.1rem;">₹{{ "%.2f"|format(order.total_amount) }}</span>
           </div>
 
-          <h4 style="margin-bottom: 0.35rem;">{{ order.product_name }}</h4>
-          <p style="font-size: 0.85rem; margin-bottom: 0.25rem;">🏪 <strong>Shop:</strong> {{ order.shop_name }}</p>
-          <p style="font-size: 0.85rem; margin-bottom: 0.25rem;">🚴 <strong>Shopper:</strong> {{ order.shopper_name }} ({{ order.shopper_phone }})</p>
+          <h4 style="margin-bottom: 0.35rem;">{{ order.items_summary }}</h4>
+          <p style="font-size: 0.85rem; margin-bottom: 0.25rem;">📍 {{ order.delivery_address }}</p>
+          {% if order.shopper_name %}
+            <p style="font-size: 0.85rem; margin-bottom: 0.5rem;">🚴 <strong>Deliverer:</strong> {{ order.shopper_name }} ({{ order.shopper_phone }})</p>
+          {% else %}
+            <p style="font-size: 0.85rem; color: var(--accent-dark); margin-bottom: 0.5rem;">⏳ Broadcasted to nearby commuters...</p>
+          {% endif %}
 
-          <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-            <a href="{{ url_for('order_details', id=order.id) }}" class="btn btn-sm btn-primary btn-block">Track & Details &rarr;</a>
-            {% if order.status == 'Delivered' %}
-              <a href="{{ url_for('order_details', id=order.id) }}" class="btn btn-sm btn-accent" style="white-space: nowrap;">Confirm Delivery</a>
-            {% endif %}
+          <div style="background: var(--accent-subtle); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;">
+            🔑 <strong>Handover OTP:</strong> <span style="font-weight: 800; font-family: monospace; font-size: 1.1rem;">{{ order.delivery_otp }}</span>
           </div>
+
+          <a href="{{ url_for('order_details', id=order.id) }}" class="btn btn-sm btn-primary btn-block">
+            Track Order Live &rarr;
+          </a>
         </div>
       {% endfor %}
     </div>
   </div>
   {% endif %}
 
-  <!-- Recent Requests Table -->
+  <!-- Past Completed Orders -->
   <div class="card">
     <div class="card-header">
-      <h3 class="card-title">📋 Your Recent Requests</h3>
-      <div style="display: flex; gap: 0.5rem;">
-        <a href="{{ url_for('customer_requests') }}" class="btn btn-sm btn-outline">View All Requests</a>
-      </div>
+      <h3 class="card-title">📜 Past Completed Orders</h3>
+      <a href="{{ url_for('orders_list') }}" class="btn btn-sm btn-outline">View Order History</a>
     </div>
 
-    {% if recent_requests %}
+    {% if past_orders %}
     <div class="table-responsive">
       <table class="custom-table">
         <thead>
           <tr>
-            <th>Product</th>
-            <th>Shop</th>
-            <th>Qty</th>
-            <th>Est. Price</th>
-            <th>Reward</th>
+            <th>Order ID</th>
+            <th>Items Summary</th>
+            <th>Deliverer</th>
+            <th>Date</th>
+            <th>Total Amount</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {% for req in recent_requests %}
+          {% for ord in past_orders %}
             <tr>
+              <td>#ORD-{{ ord.id }}</td>
+              <td><strong>{{ ord.items_summary }}</strong></td>
+              <td>{{ ord.shopper_name or 'Peer Commuter' }}</td>
+              <td style="font-size: 0.85rem; color: var(--text-muted);">{{ ord.updated_at[:16] }}</td>
+              <td style="font-weight: 700;">₹{{ "%.2f"|format(ord.total_amount) }}</td>
+              <td><span class="badge badge-completed">{{ ord.status }}</span></td>
               <td>
-                <strong>{{ req.product_name }}</strong>
-                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ req.category }}</div>
-              </td>
-              <td>{{ req.shop_name }}</td>
-              <td>{{ req.quantity }}</td>
-              <td>₹{{ "%.2f"|format(req.estimated_price) }}</td>
-              <td style="font-weight: 700; color: var(--primary);">+₹{{ "%.2f"|format(req.reward) }}</td>
-              <td>
-                <span class="badge badge-{{ req.status|lower|replace(' ', '-') }}">{{ req.status }}</span>
-              </td>
-              <td>
-                <a href="{{ url_for('request_details', id=req.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                <a href="{{ url_for('order_details', id=ord.id) }}" class="btn btn-sm btn-outline-primary">Details</a>
               </td>
             </tr>
           {% endfor %}
@@ -123,35 +94,11 @@
       </table>
     </div>
     {% else %}
-    <div style="text-align: center; padding: 3rem 1rem;">
-      <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1.25rem;">You haven't posted any shopping requests yet.</p>
-      <a href="{{ url_for('create_request') }}" class="btn btn-primary">Create Your First Request</a>
+    <div style="text-align: center; padding: 3rem 1.5rem;">
+      <p style="color: var(--text-muted); margin-bottom: 1rem;">You haven't completed any orders yet.</p>
+      <a href="{{ url_for('products_catalog') }}" class="btn btn-primary">Start Shopping Local Stores</a>
     </div>
     {% endif %}
-  </div>
-
-  <!-- Quick Action Navigation Footer Cards -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
-    <a href="{{ url_for('create_request') }}" class="card" style="text-align: center; text-decoration: none; padding: 1.25rem;">
-      <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">🛍️</div>
-      <div style="font-weight: 700; color: var(--text-main);">Create Request</div>
-      <div style="font-size: 0.8rem; color: var(--text-muted);">Ask a shopper for items</div>
-    </a>
-    <a href="{{ url_for('customer_requests') }}" class="card" style="text-align: center; text-decoration: none; padding: 1.25rem;">
-      <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📋</div>
-      <div style="font-weight: 700; color: var(--text-main);">My Requests</div>
-      <div style="font-size: 0.8rem; color: var(--text-muted);">View pending & past requests</div>
-    </a>
-    <a href="{{ url_for('orders_list') }}" class="card" style="text-align: center; text-decoration: none; padding: 1.25rem;">
-      <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📦</div>
-      <div style="font-weight: 700; color: var(--text-main);">My Orders</div>
-      <div style="font-size: 0.8rem; color: var(--text-muted);">Track active delivery orders</div>
-    </a>
-    <a href="{{ url_for('profile') }}" class="card" style="text-align: center; text-decoration: none; padding: 1.25rem;">
-      <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">👤</div>
-      <div style="font-weight: 700; color: var(--text-main);">Profile Settings</div>
-      <div style="font-size: 0.8rem; color: var(--text-muted);">Update phone and address</div>
-    </a>
   </div>
 
 </div>

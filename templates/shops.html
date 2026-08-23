@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Local Campus Shops - Pick4Me Directory{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Store Directory</span>
+      <h1>Campus & Local Shops</h1>
+      <p>Discover trusted shops in your campus and residential area.</p>
+    </div>
+
+    <div>
+      {% if session.get('user_role') == 'shopper' %}
+        <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-accent">🏪 Manage My Shop</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Search & Category Filters -->
+  <div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
+    <form method="GET" action="{{ url_for('shops_directory') }}" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+      <div style="flex: 1; min-width: 250px;">
+        <input
+          type="text"
+          name="q"
+          class="form-control"
+          placeholder="🔍 Search shop name, address or landmark..."
+          value="{{ current_query or '' }}"
+        >
+      </div>
+
+      {% if categories %}
+      <div style="min-width: 180px;">
+        <select name="category" class="form-control">
+          <option value="all">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-primary">Filter</button>
+      {% if current_query or current_category != 'all' %}
+        <a href="{{ url_for('shops_directory') }}" class="btn btn-outline">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Shops Grid -->
+  {% if shops %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.75rem;">
+    {% for shop in shops %}
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--primary);">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <span class="badge badge-customer">{{ shop.category }}</span>
+            {% if shop.owner_verified %}
+              <span class="badge badge-completed" style="font-size: 0.65rem;">✓ Verified Store</span>
+            {% endif %}
+          </div>
+
+          <h3 style="font-size: 1.3rem; margin-bottom: 0.35rem;">{{ shop.shop_name }}</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">
+            📍 {{ shop.address }} {% if shop.landmark %}(Landmark: {{ shop.landmark }}){% endif %}
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            📞 Contact: {{ shop.phone }}
+          </p>
+
+          {% if shop.description %}
+            <p style="font-size: 0.85rem; color: var(--text-main); margin-bottom: 1rem;">{{ shop.description }}</p>
+          {% endif %}
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.9rem; font-weight: 700; color: var(--primary);">
+            {{ shop.product_count }} Items Cataloged
+          </span>
+          <a href="{{ url_for('shop_detail', id=shop.id) }}" class="btn btn-sm btn-primary">
+            Visit Store Catalog &rarr;
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card text-center" style="padding: 4rem 1.5rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🏪</div>
+    <h3>No registered shops found</h3>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Register your shop to showcase items to all campus students.</p>
+    <a href="{{ url_for('login_shopper') }}" class="btn btn-accent">List Your Store</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

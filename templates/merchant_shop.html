@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}My Shop & Products Catalog - Pick4Me Merchant{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Merchant Portal</span>
+      <h1>Manage Your Store & Items 🏪</h1>
+      <p>Set up your shop profile and add products for students to purchase.</p>
+    </div>
+
+    <div>
+      <a href="{{ url_for('wallet_dashboard') }}" class="btn btn-outline">💰 My Wallet</a>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 2rem; align-items: flex-start;">
+    
+    <!-- Left Column: Shop Profile Setup -->
+    <div class="card" style="padding: 1.75rem;">
+      <h3 style="margin-bottom: 1.25rem; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+        {% if shop %}🏪 Edit Store Profile{% else %}🏪 Register Your Store{% endif %}
+      </h3>
+
+      <form method="POST" action="{{ url_for('merchant_shop_setup') }}">
+        
+        <div class="form-group">
+          <label for="shop_name" class="form-label">Shop / Store Name *</label>
+          <input
+            type="text"
+            id="shop_name"
+            name="shop_name"
+            class="form-control"
+            placeholder="e.g. ABC Stationery & Xerox Corner"
+            value="{{ shop.shop_name if shop else '' }}"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="category" class="form-label">Primary Category *</label>
+          <select id="category" name="category" class="form-control" required>
+            <option value="Stationery" {% if shop and shop.category == 'Stationery' %}selected{% endif %}>📚 Stationery & Printouts</option>
+            <option value="Food & Beverages" {% if shop and shop.category == 'Food & Beverages' %}selected{% endif %}>🍔 Food & Canteen</option>
+            <option value="Medicines & Pharmacy" {% if shop and shop.category == 'Medicines & Pharmacy' %}selected{% endif %}>💊 Pharmacy & Health</option>
+            <option value="Groceries & Essentials" {% if shop and shop.category == 'Groceries & Essentials' %}selected{% endif %}>🛒 Daily Essentials & Groceries</option>
+            <option value="Electronics" {% if shop and shop.category == 'Electronics' %}selected{% endif %}>🔌 Tech, Cables & Accessories</option>
+            <option value="General" {% if shop and shop.category == 'General' %}selected{% endif %}>📦 General Goods</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="address" class="form-label">Shop Address / Room Number *</label>
+          <input
+            type="text"
+            id="address"
+            name="address"
+            class="form-control"
+            placeholder="e.g. College Gate 1, Commercial Complex #4"
+            value="{{ shop.address if shop else '' }}"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="landmark" class="form-label">Landmark (Optional)</label>
+          <input
+            type="text"
+            id="landmark"
+            name="landmark"
+            class="form-control"
+            placeholder="e.g. Opposite Student Activity Center"
+            value="{{ shop.landmark if shop else '' }}"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="phone" class="form-label">Store Phone Number *</label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            class="form-control"
+            placeholder="+91 98765 12345"
+            value="{{ shop.phone if shop else '' }}"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="description" class="form-label">Short Store Description</label>
+          <textarea
+            id="description"
+            name="description"
+            class="form-control"
+            rows="2"
+            placeholder="e.g. All lab manuals, spiral notebooks, color printouts and pens available at student rates."
+          >{{ shop.description if shop else '' }}</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">
+          {% if shop %}Save Store Changes{% else %}Register Store{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <!-- Right Column: Product Inventory / Catalog Management -->
+    <div>
+      
+      <!-- Add Product Card -->
+      {% if shop %}
+      <div class="card" style="padding: 1.75rem; margin-bottom: 2rem; background: var(--bg-surface); border: 1px solid var(--border-color);">
+        <h3 style="margin-bottom: 1.25rem; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+          ➕ Add New Item to Catalog
+        </h3>
+
+        <form method="POST" action="{{ url_for('add_product_to_shop') }}">
+          
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label for="name" class="form-label">Product Name *</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                class="form-control"
+                placeholder="e.g. Classmate 200-page Notebook (Spiral)"
+                required
+              >
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="price" class="form-label">Price (₹) *</label>
+              <input
+                type="number"
+                id="price"
+                name="price"
+                class="form-control"
+                step="0.5"
+                min="1"
+                placeholder="80"
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="product_category" class="form-label">Category</label>
+              <input
+                type="text"
+                id="product_category"
+                name="category"
+                class="form-control"
+                value="{{ shop.category }}"
+                required
+              >
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="product_desc" class="form-label">Item Specifications / Description</label>
+            <input
+              type="text"
+              id="product_desc"
+              name="description"
+              class="form-control"
+              placeholder="e.g. Single line ruled, A4 size, high quality paper."
+            >
+          </div>
+
+          <button type="submit" class="btn btn-accent btn-block">
+            Add Product to Catalog
+          </button>
+        </form>
+      </div>
+
+      <!-- Current Listed Products -->
+      <div class="card" style="padding: 1.75rem;">
+        <h3 style="margin-bottom: 1.25rem; font-size: 1.2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+          📦 Current Store Items ({{ products|length }})
+        </h3>
+
+        {% if products %}
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in products %}
+                <tr>
+                  <td>
+                    <strong>{{ p.name }}</strong>
+                    {% if p.description %}
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">{{ p.description }}</div>
+                    {% endif %}
+                  </td>
+                  <td style="font-size: 0.85rem;">{{ p.category }}</td>
+                  <td style="font-weight: 800; color: var(--primary);">₹{{ "%.2f"|format(p.price) }}</td>
+                  <td>
+                    <form method="POST" action="{{ url_for('delete_product', id=p.id) }}" onsubmit="return confirm('Delete this item from store?');">
+                      <button type="submit" class="btn btn-sm btn-outline" style="color: var(--danger); border-color: #FECACA; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                        Delete
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p style="text-align: center; color: var(--text-muted); padding: 1.5rem 0;">No products added to your store yet.</p>
+        {% endif %}
+      </div>
+
+      {% else %}
+      <div class="card text-center" style="padding: 3rem 1.5rem;">
+        <p style="color: var(--text-muted);">Please fill and submit the store profile form on the left to activate product cataloging.</p>
+      </div>
+      {% endif %}
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}

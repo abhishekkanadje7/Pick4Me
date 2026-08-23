@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import random
 from werkzeug.security import generate_password_hash
 
 DATABASE_NAME = os.environ.get('DATABASE_PATH', os.path.join(os.path.dirname(__file__), 'pick4me.db'))
@@ -14,7 +15,7 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Create Users table
+    # 1. Users Table (with Verification and Wallet)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,108 +25,129 @@ def init_db():
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL CHECK(role IN ('customer', 'shopper', 'admin')),
             location TEXT NOT NULL,
-            upi_id TEXT DEFAULT '',
-            qr_code TEXT DEFAULT '',
+            upi_id TEXT DEFAULT '7387157739@upi',
+            qr_code TEXT DEFAULT 'upi_qr.png',
+            is_verified INTEGER NOT NULL DEFAULT 1,
+            wallet_balance REAL NOT NULL DEFAULT 0.0,
+            id_proof TEXT DEFAULT 'Verified Campus Member',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
-    # Create Requests table
+    # 2. Shops Table (Local Stores created by Shoppers/Merchants)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS requests (
+        CREATE TABLE IF NOT EXISTS shops (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            shopper_id INTEGER DEFAULT NULL,
-            product_name TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            category TEXT NOT NULL,
-            quantity INTEGER NOT NULL DEFAULT 1,
+            owner_id INTEGER NOT NULL,
             shop_name TEXT NOT NULL,
-            shop_address TEXT NOT NULL,
-            delivery_address TEXT NOT NULL,
+            category TEXT NOT NULL,
+            address TEXT NOT NULL,
+            landmark TEXT DEFAULT '',
             phone TEXT NOT NULL,
-            estimated_price REAL NOT NULL,
-            reward REAL NOT NULL,
-            instructions TEXT DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'Pending',
+            description TEXT DEFAULT '',
+            image TEXT DEFAULT '',
+            is_active INTEGER NOT NULL DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (customer_id) REFERENCES users (id),
-            FOREIGN KEY (shopper_id) REFERENCES users (id)
+            FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
         )
     ''')
 
-    # Create Orders table
+    # 3. Products Table (Shop Catalog)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            shop_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            price REAL NOT NULL,
+            description TEXT DEFAULT '',
+            image TEXT DEFAULT '',
+            in_stock INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (shop_id) REFERENCES shops (id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 4. Cart Items Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cart_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 5. Orders Table (Store Orders & Custom Peer Errands with Escrow & OTP)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            request_id INTEGER UNIQUE NOT NULL,
+            order_type TEXT NOT NULL DEFAULT 'shop_order', -- 'shop_order' or 'custom_request'
             customer_id INTEGER NOT NULL,
-            shopper_id INTEGER NOT NULL,
+            shopper_id INTEGER DEFAULT NULL,
+            shop_id INTEGER DEFAULT NULL,
+            items_summary TEXT NOT NULL,
             product_amount REAL NOT NULL,
-            reward REAL NOT NULL,
+            delivery_fee REAL NOT NULL,
             total_amount REAL NOT NULL,
-            status TEXT NOT NULL DEFAULT 'Accepted',
+            payment_status TEXT NOT NULL DEFAULT 'Pending_Payment', -- 'Pending_Payment', 'Escrow_Held', 'Released_To_Shopper', 'Refunded'
+            delivery_otp TEXT NOT NULL, -- 4-digit code for delivery confirmation
+            delivery_address TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            instructions TEXT DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'Paid_Pending_Shopper', -- 'Pending_Payment', 'Paid_Pending_Shopper', 'Accepted', 'Purchased', 'Out for Delivery', 'Delivered', 'Completed', 'Cancelled'
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (request_id) REFERENCES requests (id),
             FOREIGN KEY (customer_id) REFERENCES users (id),
-            FOREIGN KEY (shopper_id) REFERENCES users (id)
+            FOREIGN KEY (shopper_id) REFERENCES users (id),
+            FOREIGN KEY (shop_id) REFERENCES shops (id)
         )
     ''')
 
-    # Create Payments table
+    # 6. Wallet Transactions Table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS payments (
+        CREATE TABLE IF NOT EXISTS wallet_transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            order_id INTEGER DEFAULT NULL,
             amount REAL NOT NULL,
-            status TEXT NOT NULL DEFAULT 'Pending',
-            payment_method TEXT NOT NULL DEFAULT 'UPI',
+            type TEXT NOT NULL, -- 'credit_earnings', 'credit_product_sale', 'debit_withdrawal'
+            description TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (order_id) REFERENCES orders (id)
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
 
-    # Clean up any legacy dummy demo accounts safely
-    cursor.execute('''
-        DELETE FROM payments WHERE order_id IN (
-            SELECT id FROM orders WHERE customer_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
-            OR shopper_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
-        )
-    ''')
-    cursor.execute('''
-        DELETE FROM orders WHERE customer_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
-        OR shopper_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
-    ''')
-    cursor.execute('''
-        DELETE FROM requests WHERE customer_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
-        OR shopper_id IN (SELECT id FROM users WHERE email LIKE '%@pick4me.demo')
-    ''')
-    cursor.execute("DELETE FROM users WHERE email LIKE '%@pick4me.demo'")
-
-    # Ensure Abhishek's Admin Account is permanently configured and active
+    # 7. Ensure Abhishek Kanadje's Verified Admin is configured
     cursor.execute("SELECT id FROM users WHERE email = 'abhishekkanadje7@gmail.com'")
     existing_admin = cursor.fetchone()
     if not existing_admin:
         cursor.execute('''
-            INSERT INTO users (name, email, phone, password_hash, role, location, upi_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (name, email, phone, password_hash, role, location, upi_id, qr_code, is_verified, wallet_balance)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0.0)
         ''', (
             'Abhishek Kanadje',
             'abhishekkanadje7@gmail.com',
-            '+91 98765 00000',
+            '+91 73871 57739',
             generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),
             'admin',
-            'Campus Admin Block, Room 101',
-            'abhishek@upi'
+            'Campus Central Headquarters',
+            '7387157739@upi',
+            'upi_qr.png'
         ))
     else:
         cursor.execute('''
             UPDATE users
-            SET password_hash = ?, role = 'admin'
+            SET password_hash = ?, role = 'admin', upi_id = '7387157739@upi', qr_code = 'upi_qr.png', is_verified = 1
             WHERE email = 'abhishekkanadje7@gmail.com'
         ''', (generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),))
 
     conn.commit()
     conn.close()
+
+def generate_otp():
+    """Generates a secure 4-digit delivery handover OTP."""
+    return str(random.randint(1000, 9999))

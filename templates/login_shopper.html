@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Shopper & Merchant Login - Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container container-narrow" style="padding-top: 3rem; padding-bottom: 4rem;">
+  <div class="card" style="padding: 2.5rem; max-width: 520px; margin: 0 auto; box-shadow: var(--shadow-lg); border-top: 5px solid var(--accent);">
+    
+    <div style="text-align: center; margin-bottom: 1.75rem;">
+      <span class="badge badge-shopper" style="margin-bottom: 0.5rem;">Commuter & Merchant Portal</span>
+      <h2 style="font-size: 1.8rem; margin-bottom: 0.35rem;">Shopper / Store Login 🚴🏪</h2>
+      <p style="font-size: 0.95rem;">Manage your shop catalog or accept peer deliveries</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="form-group">
+        <label for="email" class="form-label">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          class="form-control"
+          placeholder="e.g. merchant@campus.edu"
+          required
+          autofocus
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          class="form-control"
+          placeholder="••••••••"
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-accent btn-block" style="margin-top: 1.5rem; padding: 0.85rem; font-size: 1rem;">
+        Log In to Shopper Portal &rarr;
+      </button>
+    </form>
+
+    <div style="margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 0.88rem;">
+      <a href="{{ url_for('register') }}?role=shopper">Register as Shopper/Store</a>
+      <a href="{{ url_for('login_customer') }}" style="color: var(--primary-dark);">&larr; Customer Login</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
