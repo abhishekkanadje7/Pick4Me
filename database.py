@@ -93,6 +93,27 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
         seed_demo_data(conn)
+    else:
+        # Ensure Abhishek's admin account is always updated and ready
+        cursor.execute("SELECT id FROM users WHERE email = 'abhishekkanadje7@gmail.com'")
+        if not cursor.fetchone():
+            cursor.execute('''
+                INSERT INTO users (name, email, phone, password_hash, role, location, upi_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                'Abhishek Kanadje',
+                'abhishekkanadje7@gmail.com',
+                '+91 98765 00000',
+                generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),
+                'admin',
+                'Campus Admin Block, Room 101',
+                'abhishek@upi'
+            ))
+        else:
+            cursor.execute('''
+                UPDATE users SET password_hash = ?, role = 'admin' WHERE email = 'abhishekkanadje7@gmail.com'
+            ''', (generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),))
+        conn.commit()
 
     conn.close()
 
@@ -129,18 +150,18 @@ def seed_demo_data(conn):
     ))
     shopper_id = cursor.lastrowid
 
-    # Seed Admin
+    # Seed Admin (Abhishek Kanadje)
     cursor.execute('''
         INSERT INTO users (name, email, phone, password_hash, role, location, upi_id)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', (
-        'Pick4Me Administrator',
-        'admin@pick4me.demo',
-        '+91 90000 00000',
-        generate_password_hash('admin123', method='pbkdf2:sha256'),
+        'Abhishek Kanadje',
+        'abhishekkanadje7@gmail.com',
+        '+91 98765 00000',
+        generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),
         'admin',
-        'Admin Block, Room 101, College HQ',
-        'admin@upi'
+        'Campus Admin Block, Room 101',
+        'abhishek@upi'
     ))
 
     # Seed initial requests

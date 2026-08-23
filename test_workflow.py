@@ -165,8 +165,8 @@ class Pick4MeWorkflowTestCase(unittest.TestCase):
         print("Step 13: Verifying Admin Dashboard...")
         self.client.get('/logout', follow_redirects=True)
         self.client.post('/login', data={
-            'email': 'admin@pick4me.demo',
-            'password': 'admin123'
+            'email': 'abhishekkanadje7@gmail.com',
+            'password': 'Abhi*2007'
         }, follow_redirects=True)
 
         res_admin = self.client.get('/admin/dashboard')
