@@ -34,7 +34,7 @@ def init_db():
         )
     ''')
 
-    # 2. Shops Table
+    # 2. Shops Table (Managed by Shoppers/Merchants)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS shops (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,38 +81,42 @@ def init_db():
         )
     ''')
 
-    # 5. Orders Table with Smart Distance & Time-Based SLA Fields
+    # 5. Orders Table: 3-Party Logistics (Customer A + Customer B Commuter + Shopper Store + Admin Escrow)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             order_type TEXT NOT NULL DEFAULT 'shop_order', -- 'shop_order' or 'custom_request'
-            customer_id INTEGER NOT NULL,
-            shopper_id INTEGER DEFAULT NULL,
-            shop_id INTEGER DEFAULT NULL,
+            customer_id INTEGER NOT NULL, -- Customer A (Buyer)
+            commuter_id INTEGER DEFAULT NULL, -- Customer B (Deliverer / Commuter)
+            shop_id INTEGER DEFAULT NULL, -- Shop (owned by Shopper/Merchant)
             items_summary TEXT NOT NULL,
-            product_amount REAL NOT NULL,
-            delivery_fee REAL NOT NULL,
-            total_amount REAL NOT NULL,
-            distance_tier TEXT NOT NULL DEFAULT 'within_campus', -- 'within_campus', 'near_gate', 'outer_market'
+            product_amount REAL NOT NULL, -- Amount credited to Shopper upon shop pickup
+            delivery_fee REAL NOT NULL, -- Reward credited to Customer B upon delivery
+            total_amount REAL NOT NULL, -- Total advance escrow paid by Customer A
+            distance_tier TEXT NOT NULL DEFAULT 'within_campus',
             distance_km REAL NOT NULL DEFAULT 0.8,
-            is_urgent INTEGER NOT NULL DEFAULT 0, -- 1 for Rush Delivery (+₹15 surge)
-            target_duration_mins INTEGER NOT NULL DEFAULT 30, -- Target SLA in minutes
+            is_urgent INTEGER NOT NULL DEFAULT 0,
+            target_duration_mins INTEGER NOT NULL DEFAULT 30,
             accepted_at TIMESTAMP DEFAULT NULL,
+            picked_up_at TIMESTAMP DEFAULT NULL,
             delivered_at TIMESTAMP DEFAULT NULL,
             actual_duration_mins INTEGER DEFAULT NULL,
             speed_bonus REAL NOT NULL DEFAULT 0.0,
             delay_penalty REAL NOT NULL DEFAULT 0.0,
             final_payout REAL DEFAULT NULL,
-            payment_status TEXT NOT NULL DEFAULT 'Pending_Payment', -- 'Pending_Payment', 'Escrow_Held', 'Released_To_Shopper', 'Refunded'
-            delivery_otp TEXT NOT NULL,
+            payment_status TEXT NOT NULL DEFAULT 'Pending_Payment', -- 'Pending_Payment', 'Escrow_Held', 'Fully_Settled', 'Refunded'
+            shop_payment_status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Released_To_Shop'
+            delivery_payment_status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Released_To_Commuter'
+            pickup_otp TEXT NOT NULL, -- 4-digit code for Stage 1 (Shop -> Customer B)
+            delivery_otp TEXT NOT NULL, -- 4-digit code for Stage 2 (Customer B -> Customer A)
             delivery_address TEXT NOT NULL,
             phone TEXT NOT NULL,
             instructions TEXT DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'Paid_Pending_Shopper',
+            status TEXT NOT NULL DEFAULT 'Paid_Pending_Commuter', -- 'Pending_Payment', 'Paid_Pending_Commuter', 'Accepted_By_Commuter', 'Picked_Up_From_Shop', 'Delivered_To_Customer', 'Completed', 'Cancelled'
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES users (id),
-            FOREIGN KEY (shopper_id) REFERENCES users (id),
+            FOREIGN KEY (commuter_id) REFERENCES users (id),
             FOREIGN KEY (shop_id) REFERENCES shops (id)
         )
     ''')
@@ -124,7 +128,7 @@ def init_db():
             user_id INTEGER NOT NULL,
             order_id INTEGER DEFAULT NULL,
             amount REAL NOT NULL,
-            type TEXT NOT NULL,
+            type TEXT NOT NULL, -- 'credit_earnings', 'credit_product_sale', 'debit_withdrawal'
             description TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
@@ -159,5 +163,5 @@ def init_db():
     conn.close()
 
 def generate_otp():
-    """Generates a secure 4-digit delivery handover OTP."""
+    """Generates a secure 4-digit handover OTP."""
     return str(random.randint(1000, 9999))

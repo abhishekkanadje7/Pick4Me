@@ -1,108 +1,102 @@
 {% extends "base.html" %}
 
-{% block title %}Commuter & Deliveries Dashboard - Pick4Me{% endblock %}
+{% block title %}Merchant Hub — Store Management | Pick4Me{% endblock %}
 
 {% block content %}
 <div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
   
-  <!-- Welcome Banner -->
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
     <div>
-      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Commuter & Merchant Hub</span>
-      <h1>Welcome, {{ session.get('user_name', 'Shopper') }}! 🚴🏪</h1>
-      <p style="margin: 0;">Pick up orders on your commute or manage your registered shop catalog.</p>
-    </div>
-    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-      <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-accent">🏪 My Store ({{ products_count }} Items)</a>
-      <a href="{{ url_for('wallet_dashboard') }}" class="btn btn-primary">💰 Wallet (₹{{ "%.2f"|format(user.wallet_balance) }})</a>
-    </div>
-  </div>
-
-  <!-- Active Deliveries in Progress -->
-  {% if active_deliveries %}
-  <div class="card" style="margin-bottom: 2.5rem; border-left: 5px solid var(--accent); background: #FFFBEB;">
-    <div class="card-header" style="border-color: #FDE68A;">
-      <h3 class="card-title" style="color: var(--accent-dark);">🛵 Active Deliveries You Are Handling ({{ active_deliveries|length }})</h3>
+      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">Merchant Store Hub</span>
+      <h1>Store Dashboard 🏪</h1>
+      <p>Manage your campus shop catalog and confirm student pickup handovers.</p>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
-      {% for order in active_deliveries %}
-        <div style="border: 1px solid #FDE68A; border-radius: var(--radius-md); padding: 1.25rem; background: #FFFFFF;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-            <span class="badge badge-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
-            <span style="font-weight: 800; color: var(--primary); font-size: 1.15rem;">
-              ₹{{ "%.2f"|format(order.total_amount) }} <span style="font-size: 0.7rem; color: var(--text-muted);">Payout</span>
-            </span>
-          </div>
-
-          <h4 style="margin-bottom: 0.35rem;">{{ order.items_summary }}</h4>
-          <p style="font-size: 0.85rem; margin-bottom: 0.25rem;">📍 <strong>Deliver to:</strong> {{ order.delivery_address }}</p>
-          <p style="font-size: 0.85rem; margin-bottom: 0.75rem;">👤 <strong>Customer:</strong> {{ order.customer_name }} ({{ order.customer_phone }})</p>
-
-          <a href="{{ url_for('order_details', id=order.id) }}" class="btn btn-sm btn-primary btn-block">
-            Update Status / Enter Handover OTP &rarr;
-          </a>
-        </div>
-      {% endfor %}
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-primary">
+        📦 Manage Shop & Items ({{ products_count }})
+      </a>
+      <a href="{{ url_for('wallet_dashboard') }}" class="btn btn-outline">
+        💰 Store Wallet: <strong>₹{{ "%.2f"|format(user.wallet_balance) }}</strong>
+      </a>
     </div>
   </div>
-  {% endif %}
 
-  <!-- Available Orders & Tasks (Advance Escrow Paid) -->
-  <div class="card">
-    <div class="card-header">
+  {% if shop %}
+  <!-- Store Summary Card -->
+  <div class="card" style="padding: 1.5rem; margin-bottom: 2rem; border-top: 4px solid var(--primary);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
       <div>
-        <h3 class="card-title">⚡ Available Delivery Tasks (Advance Escrow Paid)</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">These orders are already paid by customers. Pick them up and deliver to earn!</p>
+        <h2 style="font-size: 1.4rem; margin-bottom: 0.25rem;">{{ shop.shop_name }}</h2>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">
+          📍 {{ shop.address }} {% if shop.landmark %}(Near {{ shop.landmark }}){% endif %} &bull; Category: <strong>{{ shop.category }}</strong>
+        </p>
       </div>
-      <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary);">
-        {{ available_tasks|length }} Tasks Open
+      <div style="display: flex; gap: 0.75rem;">
+        <a href="{{ url_for('shop_detail', id=shop.id) }}" class="btn btn-sm btn-outline">View Public Storefront &rarr;</a>
+        <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-sm btn-outline-primary">➕ Add Products</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 1: INCOMING STORE PICKUPS AWAITING HANDOVER -->
+  <div class="card" style="padding: 1.75rem; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+      <div>
+        <h3 style="font-size: 1.25rem; margin: 0;">📦 Store Pickups Awaiting Handover</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0.2rem 0 0;">
+          When a student/commuter arrives to collect ordered items, hand over the items and click confirm to receive your product payment instantly!
+        </p>
       </div>
     </div>
 
-    {% if available_tasks %}
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
-      {% for task in available_tasks %}
-        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--border-color); background: var(--bg-main);">
-          <div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-              <span class="badge badge-completed">Escrow Paid</span>
-              <span style="font-weight: 800; color: var(--primary); font-size: 1.25rem;">
-                +₹{{ "%.2f"|format(task.delivery_fee) }} <span style="font-size: 0.7rem; color: var(--text-muted);">Reward</span>
-              </span>
+    {% if pending_pickups %}
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        {% for order in pending_pickups %}
+          <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                <span class="badge badge-pending">Order #ORD-{{ order.id }}</span>
+                <span style="font-size: 0.85rem; color: var(--text-muted);">Buyer: <strong>{{ order.customer_name }}</strong></span>
+              </div>
+              <h4 style="font-size: 1.05rem; margin-bottom: 0.35rem;">{{ order.items_summary }}</h4>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">
+                🚴 Commuter Collecting: <strong>{{ order.commuter_name or 'Finding nearby student...' }}</strong>
+                {% if order.commuter_phone %}(Phone: {{ order.commuter_phone }}){% endif %}
+              </div>
             </div>
 
-            <h3 style="font-size: 1.15rem; margin-bottom: 0.35rem;">{{ task.items_summary }}</h3>
-            {% if task.shop_name %}
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                🏪 <strong>Pickup Store:</strong> {{ task.shop_name }} ({{ task.shop_address }})
-              </p>
-            {% endif %}
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-              📍 <strong>Delivery Address:</strong> {{ task.delivery_address }}
-            </p>
-            <p style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.75rem;">
-              Requested by {{ task.customer_name }} • Total Order: ₹{{ "%.2f"|format(task.total_amount) }}
-            </p>
+            <div style="text-align: right;">
+              <div style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: var(--font-mono); margin-bottom: 0.5rem;">
+                ₹{{ "%.2f"|format(order.product_amount) }}
+              </div>
+              <form method="POST" action="{{ url_for('confirm_shop_pickup', id=order.id) }}">
+                <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 700;">
+                  📦 Handed Over? Collect ₹{{ "%.2f"|format(order.product_amount) }} &rarr;
+                </button>
+              </form>
+            </div>
           </div>
-
-          <form method="POST" action="{{ url_for('accept_delivery_task', id=task.id) }}" onsubmit="return confirm('Accept this delivery task?');">
-            <button type="submit" class="btn btn-primary btn-block">
-              🚴 Claim Delivery (+₹{{ "%.2f"|format(task.delivery_fee) }})
-            </button>
-          </form>
-        </div>
-      {% endfor %}
-    </div>
+        {% endfor %}
+      </div>
     {% else %}
-    <div style="text-align: center; padding: 4rem 1.5rem;">
-      <div style="font-size: 3rem; margin-bottom: 0.5rem;">🛵</div>
-      <h3>No Pending Delivery Tasks Right Now</h3>
-      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">New customer orders will appear here in real-time once advance payment is confirmed.</p>
-      <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-outline-primary">Manage Your Shop Inventory</a>
-    </div>
+      <div style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+        <p>No pending pickup handovers right now. All orders are up to date!</p>
+      </div>
     {% endif %}
   </div>
+
+  {% else %}
+  <!-- Store Setup Prompt -->
+  <div class="card text-center" style="padding: 3.5rem 1.5rem;">
+    <div style="font-size: 3.5rem; margin-bottom: 1rem;">🏪</div>
+    <h2>Register Your Campus Shop</h2>
+    <p style="color: var(--text-muted); max-width: 520px; margin: 0 auto 1.5rem;">
+      List your shop name, location, and products so campus students can order items with advance escrow payment security!
+    </p>
+    <a href="{{ url_for('merchant_shop_setup') }}" class="btn btn-primary btn-lg">Set Up Shop Now &rarr;</a>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}

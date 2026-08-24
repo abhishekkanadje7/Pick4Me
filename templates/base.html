@@ -18,7 +18,7 @@
         <strong style="color: #F8FAFC;">Campus Network Active</strong> &bull; Commuters & Local Stores Online
       </div>
       <div>
-        <span>🛡️ Advance Escrow Protected &bull; 4-Digit Handover OTP</span>
+        <span>🛡️ 3-Party Admin Escrow Protected &bull; 2-Stage OTP Handover</span>
       </div>
     </div>
   </div>
@@ -46,15 +46,17 @@
         {% if session.get('user_id') %}
           {% if session.get('user_role') == 'customer' %}
             <a href="{{ url_for('customer_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('available_deliveries_board') }}" class="nav-link font-bold text-accent">⚡ Deliver & Earn</a>
             <a href="{{ url_for('create_custom_request') }}" class="nav-link text-primary font-bold">⚡ Custom Errand</a>
             <a href="{{ url_for('orders_list') }}" class="nav-link">My Orders</a>
+            <a href="{{ url_for('wallet_dashboard') }}" class="nav-link font-bold text-primary">💰 Wallet</a>
             <a href="{{ url_for('view_cart') }}" class="nav-link cart-badge-link">
               🛒 Cart <span class="cart-pill-count">{{ cart_count }}</span>
             </a>
           {% elif session.get('user_role') == 'shopper' %}
-            <a href="{{ url_for('shopper_dashboard') }}" class="nav-link">Deliveries Board</a>
+            <a href="{{ url_for('shopper_dashboard') }}" class="nav-link">Merchant Hub</a>
             <a href="{{ url_for('merchant_shop_setup') }}" class="nav-link font-bold text-accent">🏪 My Store & Items</a>
-            <a href="{{ url_for('wallet_dashboard') }}" class="nav-link font-bold text-primary">💰 Wallet</a>
+            <a href="{{ url_for('wallet_dashboard') }}" class="nav-link font-bold text-primary">💰 Store Wallet</a>
             <a href="{{ url_for('orders_list') }}" class="nav-link">History</a>
           {% elif session.get('user_role') == 'admin' %}
             <a href="{{ url_for('admin_dashboard') }}" class="nav-link font-bold text-primary">🛡️ Admin Panel</a>
@@ -65,7 +67,7 @@
         {% else %}
           <div class="nav-actions">
             <a href="{{ url_for('login_customer') }}" class="btn btn-sm btn-outline">Customer Login</a>
-            <a href="{{ url_for('login_shopper') }}" class="btn btn-sm btn-outline" style="border-color: var(--accent); color: var(--accent-dark);">Shopper / Store Login</a>
+            <a href="{{ url_for('login_shopper') }}" class="btn btn-sm btn-outline" style="border-color: var(--accent); color: var(--accent-dark);">Merchant Store Login</a>
             <a href="{{ url_for('register') }}" class="btn btn-sm btn-primary">Sign Up</a>
           </div>
         {% endif %}
@@ -100,7 +102,7 @@
           <div class="logo-title" style="color: #FFF; margin-bottom: 0.5rem;">Pick<span style="color: var(--primary);">4Me</span></div>
           <p style="color: #CBD5E1; font-weight: 500; font-size: 0.9rem;">Your Community, Your Delivery</p>
           <p style="font-size: 0.82rem; margin-top: 0.75rem; color: #94A3B8;">
-            A bespoke hyperlocal marketplace and crowdsourced peer commute delivery network.
+            A bespoke 3-party peer marketplace connecting buyers, commuters, and campus shopkeepers with 2-stage escrow security.
           </p>
         </div>
         <div class="footer-col">
@@ -112,19 +114,19 @@
           </ul>
         </div>
         <div class="footer-col">
-          <h4>For Shoppers & Merchants</h4>
+          <h4>For Students & Commuters</h4>
           <ul class="footer-links">
-            <li><a href="{{ url_for('login_shopper') }}">List Your Store</a></li>
-            <li><a href="{{ url_for('login_shopper') }}">Earn on Daily Commutes</a></li>
-            <li><a href="{{ url_for('register') }}?role=shopper">Join as Merchant / Partner</a></li>
+            <li><a href="{{ url_for('available_deliveries_board') }}">Deliver on Your Commute</a></li>
+            <li><a href="{{ url_for('wallet_dashboard') }}">My Earnings Wallet</a></li>
+            <li><a href="{{ url_for('login_shopper') }}">List Your Campus Shop</a></li>
           </ul>
         </div>
         <div class="footer-col">
-          <h4>Trust & Security</h4>
+          <h4>2-Stage Escrow Protection</h4>
           <p style="font-size: 0.82rem; color: #94A3B8; margin-bottom: 0.5rem;">
-            🛡️ Advance Escrow Protected<br>
-            🔑 4-Digit Handover OTP<br>
-            ⚡ Dynamic Speed SLA Bonus
+            🛒 Stage 1: Item Cost to Shop on Pickup<br>
+            🚴 Stage 2: Reward to Commuter on Delivery<br>
+            🛡️ 100% Admin Escrow Safety
           </p>
         </div>
       </div>

@@ -1,218 +1,200 @@
 {% extends "base.html" %}
 
-{% block title %}Order #ORD-{{ order.id }} - Pick4Me Tracking & SLA{% endblock %}
+{% block title %}Order #ORD-{{ order.id }} — 2-Stage Escrow Details | Pick4Me{% endblock %}
 
 {% block content %}
 <div class="container container-narrow" style="padding-top: 2.5rem; padding-bottom: 4rem;">
   
-  <div style="margin-bottom: 1.5rem;">
-    <a href="{{ url_for('orders_list') }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Back to Orders</a>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <a href="{{ url_for('orders_list') }}" style="font-size: 0.85rem; color: var(--text-muted);">&larr; Back to All Orders</a>
+      <h1 style="font-size: 1.85rem; margin: 0.25rem 0 0;">Order #ORD-{{ order.id }}</h1>
+    </div>
+
+    <div>
+      <span class="badge badge-{% if order.status == 'Completed' %}completed{% elif order.status == 'Cancelled' %}cancelled{% else %}pending{% endif %}" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+        {{ order.status.replace('_', ' ') }}
+      </span>
+    </div>
   </div>
 
-  <div class="card" style="padding: 2.25rem; box-shadow: var(--shadow-lg);">
-    
-    <!-- Top Header -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+  <!-- 3-PARTY ESCROW BREAKDOWN SUMMARY CARD -->
+  <div class="card" style="padding: 1.75rem; margin-bottom: 2rem; background: #FFFFFF; box-shadow: var(--shadow-sm);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.25rem;">
       <div>
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
-          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">ORDER #ORD-{{ order.id }}</span>
-          <span class="badge badge-{{ order.status|lower|replace(' ', '-') }}">{{ order.status }}</span>
-          {% if order.is_urgent %}
-            <span class="badge" style="background: #EF4444; color: #FFF; font-size: 0.7rem; font-weight: 800; animation: pulse 2s infinite;">🔥 RUSH PRIORITY</span>
-          {% endif %}
-          <span class="badge badge-customer" style="font-size: 0.65rem;">
-            📍 {{ order.distance_tier|replace('_', ' ')|title }} (~{{ order.distance_km }} km)
-          </span>
-        </div>
-        <h1 style="font-size: 1.75rem; margin: 0;">{{ order.items_summary }}</h1>
+        <h3 style="margin: 0; font-size: 1.2rem;">{{ order.items_summary }}</h3>
+        <span style="font-size: 0.82rem; color: var(--text-muted);">Placed on {{ order.created_at[:16] }}</span>
       </div>
-
       <div style="text-align: right;">
-        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Advance Escrow</div>
-        <div style="font-size: 1.85rem; font-weight: 800; color: var(--primary-dark);">
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); font-family: var(--font-mono);">
           ₹{{ "%.2f"|format(order.total_amount) }}
         </div>
+        <span class="badge badge-completed" style="font-size: 0.68rem;">🛡️ Advance Escrow Held</span>
       </div>
     </div>
 
-    <!-- DYNAMIC SLA COUNTDOWN & SPEED BONUS METER -->
-    {% if order.status in ('Accepted', 'Purchased', 'Out for Delivery', 'Delivered') %}
-      <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); color: #FFF; border-radius: var(--radius-md); padding: 1.25rem 1.5rem; margin: 1.5rem 0; box-shadow: var(--shadow-md);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-          <div>
-            <div style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px;">
-              ⚡ Dynamic SLA Speed Reward Meter
-            </div>
-            <div style="font-size: 1.2rem; font-weight: 800; margin-top: 0.2rem;">
-              Target Delivery Window: <span style="color: #38BDF8;">{{ order.target_duration_mins }} Minutes</span>
-            </div>
-          </div>
-
-          <!-- Speed SLA Status Indicator -->
-          <div style="text-align: right;">
-            <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(16, 185, 129, 0.2); border: 1px solid #10B981; padding: 0.4rem 0.85rem; border-radius: var(--radius-full); font-size: 0.85rem; color: #34D399; font-weight: 700;">
-              🚀 Fast Delivery Bonus (+₹10) Active
-            </div>
-          </div>
-        </div>
-
-        <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 0.75rem; border-top: 1px solid #334155; padding-top: 0.5rem;">
-          💡 <strong>Reward Rule:</strong> Deliver within {{ (order.target_duration_mins * 0.65)|int }} mins to earn +₹10 Speed Bonus. Deliveries past {{ (order.target_duration_mins * 1.4)|int }} mins incur -₹10 late penalty.
+    <!-- 2-Part Fund Allocation -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; background: var(--bg-main); padding: 1rem; border-radius: var(--radius-sm); font-size: 0.88rem;">
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.78rem;">🏪 Item Cost (To Shopkeeper):</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">₹{{ "%.2f"|format(order.product_amount) }}</div>
+        <div style="font-size: 0.75rem; margin-top: 0.2rem;">
+          {% if order.shop_payment_status == 'Released_To_Shop' %}
+            <span style="color: var(--primary); font-weight: 700;">✓ Released to Shop Wallet</span>
+          {% else %}
+            <span style="color: var(--accent-dark);">⏳ Held in Escrow (Paid on Pickup)</span>
+          {% endif %}
         </div>
       </div>
-    {% endif %}
 
-    <!-- PROGRESS TRACKER TIMELINE -->
-    {% set step_ranks = {'Pending_Payment': 0, 'Paid_Pending_Shopper': 1, 'Accepted': 2, 'Purchased': 3, 'Out for Delivery': 4, 'Delivered': 5, 'Completed': 6} %}
-    {% set current_rank = step_ranks.get(order.status, 1) %}
-
-    <div class="order-tracker">
-      {% set pct = ((current_rank - 1) / 5 * 100)|int %}
-      <div class="tracker-progress-line" style="width: {% if pct > 0 %}{{ pct }}%{% else %}0%{% endif %};"></div>
-
-      <div class="tracker-step {% if current_rank >= 1 %}completed{% endif %}">
-        <div class="tracker-dot">✓</div>
-        <div class="tracker-title">Paid Escrow</div>
-      </div>
-
-      <div class="tracker-step {% if current_rank >= 2 %}completed{% elif current_rank == 1 %}active{% endif %}">
-        <div class="tracker-dot">{% if current_rank >= 2 %}✓{% else %}2{% endif %}</div>
-        <div class="tracker-title">Accepted</div>
-      </div>
-
-      <div class="tracker-step {% if current_rank >= 3 %}completed{% elif current_rank == 2 %}active{% endif %}">
-        <div class="tracker-dot">{% if current_rank >= 3 %}✓{% else %}3{% endif %}</div>
-        <div class="tracker-title">Purchased</div>
-      </div>
-
-      <div class="tracker-step {% if current_rank >= 4 %}completed{% elif current_rank == 3 %}active{% endif %}">
-        <div class="tracker-dot">{% if current_rank >= 4 %}✓{% else %}4{% endif %}</div>
-        <div class="tracker-title">Out for Delivery</div>
-      </div>
-
-      <div class="tracker-step {% if current_rank >= 6 %}completed{% elif current_rank == 5 %}active{% endif %}">
-        <div class="tracker-dot">{% if current_rank >= 6 %}✓{% else %}5{% endif %}</div>
-        <div class="tracker-title">Completed</div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.78rem;">🚴 Commuter Reward (To Deliverer):</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: var(--primary);">₹{{ "%.2f"|format(order.delivery_fee) }}</div>
+        <div style="font-size: 0.75rem; margin-top: 0.2rem;">
+          {% if order.delivery_payment_status == 'Released_To_Commuter' %}
+            <span style="color: var(--primary); font-weight: 700;">✓ Released to Commuter Wallet</span>
+          {% else %}
+            <span style="color: var(--accent-dark);">⏳ Held in Escrow (Paid on Delivery)</span>
+          {% endif %}
+        </div>
       </div>
     </div>
+  </div>
 
-    <!-- 1. CUSTOMER SECRET 4-DIGIT DELIVERY OTP BOX -->
-    {% if session.get('user_id') == order.customer_id or session.get('user_role') == 'admin' %}
-      {% if order.status != 'Completed' and order.status != 'Cancelled' %}
-        <div style="background: var(--accent-subtle); border: 2px dashed var(--accent-dark); border-radius: var(--radius-md); padding: 1.5rem; margin: 1.5rem 0; text-align: center;">
-          <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-dark); text-transform: uppercase;">
-            🔑 Your Secret Delivery Handover OTP
-          </div>
-          <div style="font-size: 2.75rem; font-weight: 900; letter-spacing: 8px; color: var(--text-main); margin: 0.5rem 0; font-family: monospace;">
-            {{ order.delivery_otp }}
-          </div>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; max-width: 450px; margin: 0 auto;">
-            🛡️ <strong>Safety Rule:</strong> Give this 4-digit code to the commuter <em>only</em> after they hand you the physical items!
-          </p>
-        </div>
+  <!-- STAGE 1: SHOP PICKUP & SHOPKEEPER SETTLEMENT -->
+  <div class="card" style="padding: 1.75rem; margin-bottom: 2rem; border-left: 6px solid {% if order.shop_payment_status == 'Released_To_Shop' %}var(--primary){% else %}var(--accent){% endif %};">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+      <h3 style="font-size: 1.2rem; margin: 0;">
+        🏪 Stage 1: Store Pickup & Shopkeeper Payout
+      </h3>
+      {% if order.shop_payment_status == 'Released_To_Shop' %}
+        <span class="badge badge-completed">✓ ₹{{ "%.2f"|format(order.product_amount) }} Paid to Shopkeeper</span>
+      {% else %}
+        <span class="badge badge-pending">Pending Pickup</span>
       {% endif %}
-    {% endif %}
+    </div>
 
-    <!-- 2. SHOPPER OTP VERIFICATION & MILESTONE ACTIONS -->
-    {% if session.get('user_id') == order.shopper_id or session.get('user_role') == 'admin' %}
-      
-      <!-- Deliverer Step-by-Step Update Button -->
-      {% if next_step %}
-        <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; margin: 1.5rem 0; text-align: center;">
-          <p style="font-size: 0.9rem; margin-bottom: 0.75rem; font-weight: 600;">Update delivery progress:</p>
-          <form method="POST" action="{{ url_for('update_order_status', id=order.id) }}">
-            <input type="hidden" name="status" value="{{ next_step.action }}">
-            <button type="submit" class="btn btn-lg {{ next_step.class }}" style="padding: 0.75rem 2rem;">
-              {{ next_step.label }} &rarr;
+    <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
+      <strong>Pickup Location:</strong> {{ order.shop_name or 'Local Store' }} ({{ order.shop_address or 'Campus Gate' }})
+      {% if order.shop_phone %}&bull; Phone: {{ order.shop_phone }}{% endif %}
+    </p>
+
+    {% if order.shop_payment_status == 'Released_To_Shop' %}
+      <div style="background: #ECFDF5; border: 1px solid #A7F3D0; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.88rem; color: #065F46;">
+        ✓ <strong>Items Picked Up!</strong> ₹{{ "%.2f"|format(order.product_amount) }} has been automatically transferred to the Shopkeeper's Wallet balance.
+      </div>
+    {% else %}
+      {% if is_shop_owner or is_commuter_b or is_admin %}
+        <div style="background: var(--bg-main); padding: 1.25rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-color);">
+          <div style="margin-bottom: 0.75rem; font-size: 0.9rem;">
+            When deliverer arrives at the shop, confirm item handover below to release product funds:
+          </div>
+          <form method="POST" action="{{ url_for('confirm_shop_pickup', id=order.id) }}">
+            <button type="submit" class="btn btn-primary" style="font-weight: 700;">
+              📦 Confirm Shop Handover & Release ₹{{ "%.2f"|format(order.product_amount) }} to Store Wallet &rarr;
             </button>
           </form>
         </div>
+      {% else %}
+        <div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">
+          ⏳ Deliverer is on the way to the shop. Shopkeeper will receive product payment instantly upon handover.
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- STAGE 2: CUSTOMER DELIVERY & COMMUTER REWARD SETTLEMENT -->
+  <div class="card" style="padding: 1.75rem; margin-bottom: 2rem; border-left: 6px solid {% if order.status == 'Completed' %}var(--primary){% else %}var(--info){% endif %};">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+      <h3 style="font-size: 1.2rem; margin: 0;">
+        🚴 Stage 2: Final Handover & Commuter Reward Payout
+      </h3>
+      {% if order.status == 'Completed' %}
+        <span class="badge badge-completed">✓ Delivery Completed</span>
+      {% else %}
+        <span class="badge badge-pending">In Transit</span>
+      {% endif %}
+    </div>
+
+    <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
+      <strong>Delivery Destination:</strong> {{ order.delivery_address }} &bull; Customer: {{ order.customer_name }} ({{ order.phone }})
+    </p>
+
+    {% if order.status == 'Completed' %}
+      <div style="background: #ECFDF5; border: 1px solid #A7F3D0; padding: 1.25rem; border-radius: var(--radius-sm); font-size: 0.9rem; color: #065F46;">
+        <div style="font-weight: 800; font-size: 1.05rem; margin-bottom: 0.35rem;">🎉 Order Successfully Completed!</div>
+        <div>
+          Total Reward Released to Commuter: <strong>₹{{ "%.2f"|format(order.final_payout or order.delivery_fee) }}</strong>
+          {% if order.speed_bonus > 0 %}
+            <span class="badge badge-completed" style="margin-left: 0.5rem;">+₹10 Speed Bonus</span>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      
+      <!-- If current user is Customer A (Buyer) -->
+      {% if is_customer_a %}
+        <div style="background: #FFFBEB; border: 2px dashed #FDE68A; padding: 1.5rem; border-radius: var(--radius-md); text-align: center; margin-top: 1rem;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: #92400E; margin-bottom: 0.5rem; text-transform: uppercase;">
+            🔑 Your Secret 4-Digit Delivery Handover OTP:
+          </div>
+          <div style="font-size: 2.75rem; font-weight: 900; letter-spacing: 12px; color: var(--text-main); font-family: var(--font-mono); margin-bottom: 0.5rem;">
+            {{ order.delivery_otp }}
+          </div>
+          <div style="font-size: 0.82rem; color: #B45309;">
+            🛡️ <strong>Safety Rule:</strong> Give this 4-digit code to the deliverer ONLY after you receive your items in hand!
+          </div>
+        </div>
       {% endif %}
 
-      <!-- Deliverer OTP Submission Form upon Handover -->
-      {% if order.status in ('Out for Delivery', 'Delivered') %}
-        <div style="background: var(--primary-subtle); border: 2px solid var(--primary); border-radius: var(--radius-md); padding: 1.75rem; margin: 1.5rem 0; text-align: center;">
-          <h3 style="color: var(--primary-dark); font-size: 1.25rem; margin-bottom: 0.35rem;">📦 Ready for Handover?</h3>
-          <p style="font-size: 0.9rem; margin-bottom: 1rem; color: var(--text-main);">
-            Ask customer (<strong>{{ order.customer_name }}</strong>) for their <strong>4-digit OTP</strong> to complete this delivery and release funds into your wallet!
+      <!-- If current user is Customer B (Commuter) -->
+      {% if is_commuter_b or is_admin %}
+        <div style="background: var(--bg-main); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-top: 1rem;">
+          <h4 style="font-size: 1.05rem; margin-bottom: 0.5rem;">🔑 Verify Customer's 4-Digit Delivery OTP</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Upon handing over the items to Customer A ({{ order.customer_name }}), ask them for their 4-digit Delivery OTP:
           </p>
-          
-          <form method="POST" action="{{ url_for('verify_delivery_otp', id=order.id) }}" style="display: flex; gap: 0.5rem; justify-content: center; max-width: 360px; margin: 0 auto;">
+
+          <form method="POST" action="{{ url_for('verify_delivery_otp', id=order.id) }}" style="display: flex; gap: 0.75rem; max-width: 400px;">
             <input
               type="text"
               name="delivery_otp"
               class="form-control"
               placeholder="Enter 4-Digit OTP"
               maxlength="4"
-              style="text-align: center; font-size: 1.25rem; font-weight: 800; letter-spacing: 4px;"
+              style="font-size: 1.25rem; letter-spacing: 6px; text-align: center; font-family: var(--font-mono); font-weight: 800;"
               required
             >
             <button type="submit" class="btn btn-primary" style="white-space: nowrap; font-weight: 700;">
-              Verify & Collect ₹
+              Verify & Collect ₹{{ "%.2f"|format(order.delivery_fee) }} &rarr;
             </button>
           </form>
         </div>
       {% endif %}
 
     {% endif %}
-
-    <!-- 3. If Order is Completed -->
-    {% if order.status == 'Completed' %}
-      <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: var(--radius-md); padding: 1.25rem; margin: 1.5rem 0; text-align: center;">
-        <div style="font-weight: 800; color: #065F46; font-size: 1.2rem;">✅ Order Completed & Funds Released!</div>
-        <p style="font-size: 0.9rem; color: #047857; margin: 0.25rem 0 0;">
-          Delivered in <strong>{{ order.actual_duration_mins or 15 }} minutes</strong>.
-          {% if order.speed_bonus > 0 %}
-            <span style="font-weight: 700; color: #059669;">🚀 +₹{{ "%.2f"|format(order.speed_bonus) }} Speed Bonus was awarded!</span>
-          {% elif order.delay_penalty > 0 %}
-            <span style="font-weight: 700; color: #DC2626;">⚠️ -₹{{ "%.2f"|format(order.delay_penalty) }} late penalty was deducted.</span>
-          {% endif %}
-        </p>
-      </div>
-    {% endif %}
-
-    <!-- Order Item & Party Details -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-top: 1.5rem;">
-      
-      <!-- Delivery Destination Info -->
-      <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
-        <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">📍 Delivery Destination</h4>
-        <div style="font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">{{ order.delivery_address }}</div>
-        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Customer: {{ order.customer_name }} ({{ order.phone }})</div>
-        {% if order.instructions %}
-          <div style="font-size: 0.85rem; background: #FFFBEB; padding: 0.5rem; border-radius: var(--radius-sm); color: #92400E;">
-            💬 {{ order.instructions }}
-          </div>
-        {% endif %}
-      </div>
-
-      <!-- Deliverer / Shopper Details -->
-      <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
-        <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">🚴 Commuter / Deliverer</h4>
-        {% if order.shopper_name %}
-          <div style="font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">{{ order.shopper_name }}</div>
-          <div style="font-size: 0.9rem; color: var(--text-muted);">📞 {{ order.shopper_phone }}</div>
-        {% else %}
-          <div style="color: var(--accent-dark); font-weight: 600;">⏳ Waiting for nearby commuter to claim...</div>
-        {% endif %}
-
-        <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-top: 1rem; margin-bottom: 0.5rem;">💳 Payment Breakdown</h4>
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
-          <span>Items Cost:</span>
-          <span>₹{{ "%.2f"|format(order.product_amount) }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.5rem;">
-          <span>Distance Fee ({{ order.distance_tier|replace('_', ' ')|title }}):</span>
-          <span style="color: var(--primary); font-weight: 700;">+₹{{ "%.2f"|format(order.delivery_fee) }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 1rem; font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
-          <span>Total Escrow:</span>
-          <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
-        </div>
-      </div>
-
-    </div>
-
   </div>
+
+  <!-- Delivery Details Summary -->
+  <div class="card" style="padding: 1.5rem;">
+    <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+      📋 Contact & Routing Details
+    </h4>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.88rem;">
+      <div>
+        <strong>Buyer (Customer A):</strong> {{ order.customer_name }}<br>
+        <span style="color: var(--text-muted);">Phone: {{ order.phone }}</span><br>
+        <span style="color: var(--text-muted);">Address: {{ order.delivery_address }}</span>
+      </div>
+      <div>
+        <strong>Deliverer (Customer B):</strong> {{ order.commuter_name or 'Looking for nearby commuter...' }}<br>
+        {% if order.commuter_phone %}
+          <span style="color: var(--text-muted);">Phone: {{ order.commuter_phone }}</span><br>
+        {% endif %}
+        <span style="color: var(--primary); font-weight: 600;">SLA Window: {{ order.target_duration_mins }} Mins</span>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endblock %}

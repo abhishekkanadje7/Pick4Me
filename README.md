@@ -26,11 +26,27 @@ It solves two primary community problems:
 ### ⚡ 2. Custom Peer Errands
 - Can't find an item in registered stores? Customers can create a **Custom Errand Request** detailing item, shop location, estimated cost, and delivery reward.
 
-### 🛡️ 3. Advance Payment Escrow & 4-Digit Handover OTP
-- **Advance Payment**: Order is only broadcasted to commuters once advance payment is confirmed.
-- **Customer Secret 4-digit Delivery OTP**: Shown securely in the customer's order tracker.
-- **Anti-Fraud Handover**: Deliverer enters the 4-digit OTP upon physical delivery.
-- **Auto-Wallet Settlement**: Verifying OTP instantly releases the full order amount (product price + delivery fee) into the deliverer's **Wallet Balance**!
+### 👥 3-Party Peer Logistics Architecture (Customer A & B + Merchant Shop + Admin Escrow)
+```text
+[ Customer A (Buyer) ] 
+       │ Places Order & Pays (Item Price + Delivery Reward) in Advance
+       ▼
+[ Admin / Platform Escrow (7387157739@upi) ]
+       │ Holds 100% Funds Securely
+       ├───► Customer B (Peer Commuter) Accepts Delivery Task
+       │
+       ├───► [ STAGE 1: Shop Handover ]
+       │     Customer B reaches Shop & picks up item.
+       │     Shopkeeper confirms pickup.
+       │     💰 AUTOMATIC PAYOUT 1: Admin transfers Item Cost directly to Shopkeeper's Wallet!
+       │
+       └───► [ STAGE 2: Customer Handover ]
+             Customer B delivers item to Customer A's room/hostel.
+             Customer A verifies item & gives 4-Digit Delivery OTP.
+             Customer B verifies OTP.
+             💰 AUTOMATIC PAYOUT 2: Admin transfers Delivery Reward (+ Speed Bonus) to Customer B's Wallet!
+             ✅ Order Completed!
+```
 
 ### 💰 4. Commuter Wallet & Payouts (`/wallet`)
 - Real-time wallet balance tracking.

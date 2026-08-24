@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Peer Deliveries Board — Deliver & Earn | Pick4Me{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
+  
+  <!-- Header Banner -->
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <span class="badge badge-shopper" style="margin-bottom: 0.4rem;">🚴 Peer Commute Logistics</span>
+      <h1>Available Delivery Errands ⚡</h1>
+      <p>Travelling across campus? Pick up items from local shops along your route and earn instant cash rewards!</p>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{{ url_for('wallet_dashboard') }}" class="btn btn-outline">
+        💰 Wallet Balance: <strong>₹{{ "%.2f"|format(user.wallet_balance if user else 0.0) }}</strong>
+      </a>
+      <a href="{{ url_for('create_custom_request') }}" class="btn btn-primary">
+        ➕ Need an Item? Post Errand
+      </a>
+    </div>
+  </div>
+
+  <!-- Active Tasks Claimed By Current User (Customer B) -->
+  {% if my_active_tasks %}
+  <div style="margin-bottom: 2.5rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+      <span style="font-size: 1.25rem;">🚴</span>
+      <h2 style="font-size: 1.35rem; margin: 0;">My Active Deliveries in Progress ({{ my_active_tasks|length }})</h2>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem;">
+      {% for task in my_active_tasks %}
+        <div class="card" style="border: 2px solid var(--accent); box-shadow: var(--shadow-md);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+            <span class="badge badge-pending">Order #ORD-{{ task.id }}</span>
+            <span style="font-size: 1.15rem; font-weight: 800; color: var(--accent-dark); font-family: var(--font-mono);">
+              ₹{{ "%.2f"|format(task.delivery_fee) }} Reward
+            </span>
+          </div>
+
+          <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">{{ task.items_summary }}</h3>
+          
+          <div style="background: var(--bg-main); border-radius: var(--radius-sm); padding: 0.75rem; font-size: 0.85rem; margin-bottom: 1rem;">
+            <div style="margin-bottom: 0.35rem;">
+              🏪 <strong>Pickup:</strong> {{ task.shop_name or 'Local Store' }} ({{ task.shop_address or 'Campus Gate' }})
+            </div>
+            <div>
+              📍 <strong>Deliver To:</strong> {{ task.delivery_address }} (Customer: {{ task.customer_name }})
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge badge-admin">{{ task.status.replace('_', ' ') }}</span>
+            <a href="{{ url_for('order_details', id=task.id) }}" class="btn btn-sm btn-primary">
+              Continue Delivery &rarr;
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Open Tasks Available to Claim -->
+  <div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h2 style="font-size: 1.35rem; margin: 0;">⚡ Open Delivery Requests Near You</h2>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">Advance Escrow Protected &bull; Instant Wallet Release</span>
+    </div>
+
+    {% if open_tasks %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem;">
+      {% for task in open_tasks %}
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid {% if task.is_urgent %}var(--danger){% else %}var(--primary){% endif %};">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;">
+              <div>
+                {% if task.is_urgent %}
+                  <span class="badge" style="background: #FEE2E2; color: #991B1B; font-weight: 800;">🔥 Urgent Rush</span>
+                {% else %}
+                  <span class="badge badge-completed">{{ task.distance_tier.replace('_', ' ').title() }}</span>
+                {% endif %}
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 1.35rem; font-weight: 800; color: var(--primary); font-family: var(--font-mono);">
+                  +₹{{ "%.2f"|format(task.delivery_fee) }}
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Commuter Reward</div>
+              </div>
+            </div>
+
+            <h3 style="font-size: 1.15rem; margin-bottom: 0.4rem;">{{ task.items_summary }}</h3>
+            
+            <div style="background: var(--bg-main); border-radius: var(--radius-sm); padding: 0.85rem; font-size: 0.85rem; margin: 0.75rem 0 1rem;">
+              <div style="margin-bottom: 0.4rem; color: var(--text-main);">
+                🏪 <strong>Pickup Store:</strong> {{ task.shop_name or 'Local Store' }}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-left: 1.4rem;">{{ task.shop_address or 'Near Campus' }}</div>
+              </div>
+              <div style="color: var(--text-main);">
+                📍 <strong>Deliver To:</strong> {{ task.delivery_address }}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-left: 1.4rem;">Buyer: {{ task.customer_name }}</div>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem;">
+              <span>⏱️ Target SLA: <strong>{{ task.target_duration_mins }} mins</strong></span>
+              <span style="color: var(--primary); font-weight: 600;">🚀 +₹10 Early Speed Bonus</span>
+            </div>
+          </div>
+
+          <div>
+            <form method="POST" action="{{ url_for('claim_delivery_task', id=task.id) }}">
+              <button type="submit" class="btn btn-primary btn-block" style="font-weight: 700;">
+                🚴 Claim Delivery (Earn ₹{{ "%.2f"|format(task.delivery_fee) }})
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card text-center" style="padding: 3.5rem 1.5rem;">
+      <div style="font-size: 3rem; margin-bottom: 0.75rem;">🚲</div>
+      <h3>No Pending Delivery Requests Right Now</h3>
+      <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto 1.5rem;">
+        All orders have been picked up! Check back shortly or post a custom errand if you need an item delivered.
+      </p>
+      <a href="{{ url_for('products_catalog') }}" class="btn btn-outline-primary">Browse Campus Stores</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
