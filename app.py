@@ -1227,6 +1227,10 @@ def toggle_user_verification(id):
     flash('User KYC verification status updated.', 'info')
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/favicon.ico')
+def favicon():
+    return app.send_static_file('images/logo.png')
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
