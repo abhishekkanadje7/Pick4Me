@@ -42,15 +42,15 @@
     <!-- Key Metrics Stats -->
     <div style="display: flex; justify-content: center; gap: 3.5rem; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.75rem;">
       <div>
-        <div style="font-size: 1.6rem; font-weight: 800; color: var(--primary);">{{ stats.shops }}+</div>
+        <div class="count-up" data-target="{{ stats.shops }}" style="font-size: 1.6rem; font-weight: 800; color: var(--primary);">{{ stats.shops }}+</div>
         <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Campus Stores</div>
       </div>
       <div>
-        <div style="font-size: 1.6rem; font-weight: 800; color: var(--accent);">{{ stats.products }}+</div>
+        <div class="count-up" data-target="{{ stats.products }}" style="font-size: 1.6rem; font-weight: 800; color: var(--accent);">{{ stats.products }}+</div>
         <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Catalog Items</div>
       </div>
       <div>
-        <div style="font-size: 1.6rem; font-weight: 800; color: var(--text-main);">{{ stats.completed }}+</div>
+        <div class="count-up" data-target="{{ stats.completed }}" style="font-size: 1.6rem; font-weight: 800; color: var(--text-main);">{{ stats.completed }}+</div>
         <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Completed Deliveries</div>
       </div>
     </div>
