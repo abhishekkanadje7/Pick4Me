@@ -248,14 +248,18 @@ img {
 }
 
 .logo-icon-svg {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
   border-radius: 10px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 2px;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .logo-brand:hover .logo-icon-svg {
-  transform: rotate(-5deg) scale(1.05);
+  transform: scale(1.06) rotate(-3deg);
 }
 
 .logo-text-wrap {
