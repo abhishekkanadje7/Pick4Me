@@ -10,7 +10,7 @@ from flask import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-from database import get_db_connection, init_db, generate_otp, seed_demo_data
+from database import get_db_connection, init_db, generate_otp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'pick4me-super-secret-key-college-demo-2026')
@@ -1305,15 +1305,6 @@ def toggle_user_verification(id):
     conn.commit()
     conn.close()
     flash('User KYC verification status updated.', 'info')
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/seed-demo-data', methods=['POST'])
-@admin_required
-def admin_seed_data():
-    conn = get_db_connection()
-    seed_demo_data(conn)
-    conn.close()
-    flash('⚡ All demonstration campus stores, products, and sample live deliveries successfully loaded!', 'success')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/health/db')
