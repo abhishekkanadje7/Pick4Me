@@ -11,6 +11,13 @@
       <h1>Admin Control Center 🛡️</h1>
       <p>System-wide metrics, KYC user verification, registered shops, and escrow ledger.</p>
     </div>
+    <div>
+      <form method="POST" action="{{ url_for('admin_clean_products') }}" onsubmit="return confirm('Do you want to delete all old products, stores, and orders to start fresh?');">
+        <button type="submit" class="btn" style="padding: 0.65rem 1.25rem; font-weight: 700; background: #e53e3e; color: #fff; border: none; border-radius: var(--radius-md); box-shadow: var(--shadow-md); cursor: pointer;">
+          🗑️ Clear All Old Products & Stores
+        </button>
+      </form>
+    </div>
   </div>
 
   <!-- Admin 6 Stats Grid -->

@@ -1307,6 +1307,19 @@ def toggle_user_verification(id):
     flash('User KYC verification status updated.', 'info')
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/clean-all-products', methods=['POST', 'GET'])
+@admin_required
+def admin_clean_products():
+    conn = get_db_connection()
+    conn.execute("DELETE FROM cart_items")
+    conn.execute("DELETE FROM products")
+    conn.execute("DELETE FROM orders")
+    conn.execute("DELETE FROM shops")
+    conn.commit()
+    conn.close()
+    flash('All old products, stores, and test orders cleared! Ready for your fresh stores.', 'success')
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/health/db')
 def db_health():
     try:
