@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 from functools import wraps
 from datetime import datetime
@@ -9,7 +10,7 @@ from flask import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-from database import get_db_connection, init_db, generate_otp
+from database import get_db_connection, init_db, generate_otp, seed_demo_data
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'pick4me-super-secret-key-college-demo-2026')
@@ -55,7 +56,7 @@ def calculate_delivery_reward(distance_tier='within_campus', is_urgent=False):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        if not session.get('user_id'):
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
@@ -64,7 +65,7 @@ def login_required(f):
 def customer_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        if not session.get('user_id'):
             flash('Please log in first.', 'warning')
             return redirect(url_for('login_customer'))
         if session.get('user_role') not in ('customer', 'admin'):
@@ -76,7 +77,7 @@ def customer_required(f):
 def shopper_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        if not session.get('user_id'):
             flash('Please log in first.', 'warning')
             return redirect(url_for('login_shopper'))
         if session.get('user_role') not in ('shopper', 'admin'):
@@ -88,7 +89,7 @@ def shopper_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        if not session.get('user_id'):
             flash('Please log in as an administrator.', 'warning')
             return redirect(url_for('login'))
         if session.get('user_role') != 'admin':
@@ -102,7 +103,7 @@ def inject_globals():
     user = None
     cart_count = 0
     user_shop = None
-    if 'user_id' in session:
+    if session.get('user_id'):
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
         
@@ -1055,19 +1056,44 @@ def wallet_dashboard():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'user_id' in session:
+    if session.get('user_id'):
         role = session.get('user_role', 'customer')
         return redirect(url_for(f'{role}_dashboard' if role != 'admin' else 'admin_dashboard'))
 
     if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+        login_input = request.form.get('email', '').strip()
         password = request.form.get('password', '')
 
+        if not login_input or not password:
+            flash('Please enter both your email / mobile number and password.', 'danger')
+            return render_template('login.html', form_data={'email': login_input})
+
+        # Format phone if digits were entered
+        phone_digits = re.sub(r'\D', '', login_input)
+        if phone_digits.startswith('91') and len(phone_digits) == 12:
+            phone_digits = phone_digits[2:]
+        elif phone_digits.startswith('0') and len(phone_digits) == 11:
+            phone_digits = phone_digits[1:]
+        formatted_phone = f"+91 {phone_digits[:5]} {phone_digits[5:]}" if len(phone_digits) == 10 else None
+
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+        user = conn.execute('''
+            SELECT * FROM users 
+            WHERE LOWER(email) = LOWER(?)
+               OR phone = ?
+               OR (? IS NOT NULL AND phone = ?)
+               OR (? IS NOT NULL AND phone LIKE ?)
+        ''', (
+            login_input,
+            login_input,
+            formatted_phone, formatted_phone,
+            phone_digits if len(phone_digits) == 10 else None,
+            f'%{phone_digits}%' if len(phone_digits) == 10 else '%NOMATCH%'
+        )).fetchone()
         conn.close()
 
         if user and check_password_hash(user['password_hash'], password):
+            session.clear()
             session['user_id'] = user['id']
             session['user_name'] = user['name']
             session['user_role'] = user['role']
@@ -1080,9 +1106,10 @@ def login():
                 return redirect(url_for('shopper_dashboard'))
             return redirect(url_for('customer_dashboard'))
         else:
-            flash('Invalid email or password.', 'danger')
+            flash('Invalid email/mobile number or password. Please verify and try again.', 'danger')
+            return render_template('login.html', form_data={'email': login_input})
 
-    return render_template('login.html')
+    return render_template('login.html', form_data={})
 
 @app.route('/login/customer')
 def login_customer():
@@ -1094,43 +1121,96 @@ def login_shopper():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if 'user_id' in session:
+    if session.get('user_id'):
         return redirect(url_for('index'))
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip().lower()
-        phone = request.form.get('phone', '').strip()
+        raw_phone = request.form.get('phone', '').strip()
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
         location = request.form.get('location', '').strip()
         role = request.form.get('role', 'customer').strip().lower()
         upi_id = request.form.get('upi_id', '7387157739@upi').strip()
 
-        if not all([name, email, phone, password, location]):
-            flash('Please fill in all mandatory fields.', 'danger')
+        # 1. Full Name validation (at least 2 letters)
+        if len(name) < 2 or not re.search(r'[a-zA-Z]', name):
+            flash('Please enter a valid full name (minimum 2 letters).', 'danger')
             return render_template('register.html', form_data=request.form)
 
-        if password != confirm_password or len(password) < 6:
-            flash('Passwords do not match or are shorter than 6 characters.', 'danger')
+        # 2. Email Address regex validation
+        email_pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        if not re.match(email_pattern, email):
+            flash('Please enter a valid email address (e.g. name@gmail.com).', 'danger')
             return render_template('register.html', form_data=request.form)
 
+        # 3. 10-Digit Indian Mobile Number validation
+        clean_phone = re.sub(r'\D', '', raw_phone)
+        if clean_phone.startswith('91') and len(clean_phone) == 12:
+            clean_phone = clean_phone[2:]
+        elif clean_phone.startswith('0') and len(clean_phone) == 11:
+            clean_phone = clean_phone[1:]
+
+        if not (len(clean_phone) == 10 and clean_phone[0] in '6789'):
+            flash('Please enter a valid 10-digit Indian mobile number (must start with 6, 7, 8, or 9).', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        formatted_phone = f"+91 {clean_phone[:5]} {clean_phone[5:]}"
+
+        # 4. Password validation
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        if password != confirm_password:
+            flash('Passwords do not match. Please re-enter your password carefully.', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        # 5. Campus Location validation
+        if len(location) < 3:
+            flash('Please enter your specific hostel block, room number, or campus department.', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        if role not in ('customer', 'shopper'):
+            role = 'customer'
+
+        # 6. Database uniqueness check for email & phone
         conn = get_db_connection()
-        if conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone():
+        if conn.execute('SELECT id FROM users WHERE LOWER(email) = LOWER(?)', (email,)).fetchone():
             conn.close()
-            flash('An account with this email already exists. Please log in.', 'warning')
-            return redirect(url_for('login'))
+            flash('An account with this email address already exists. Please log in.', 'warning')
+            return render_template('register.html', form_data=request.form)
 
+        if conn.execute('SELECT id FROM users WHERE phone = ? OR phone = ? OR phone LIKE ?', 
+                        (formatted_phone, raw_phone, f'%{clean_phone}%')).fetchone():
+            conn.close()
+            flash(f'The mobile number ({formatted_phone}) is already registered with another account.', 'warning')
+            return render_template('register.html', form_data=request.form)
+
+        # 7. Safe Insert & Verified ID retrieval
         password_hash = generate_password_hash(password, method='pbkdf2:sha256')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO users (name, email, phone, password_hash, role, location, upi_id, is_verified)
             VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-        ''', (name, email, phone, password_hash, role, location, upi_id))
+        ''', (name, email, formatted_phone, password_hash, role, location, upi_id))
         conn.commit()
+
         user_id = cursor.lastrowid
+        if not user_id:
+            row = conn.execute('SELECT id FROM users WHERE LOWER(email) = LOWER(?)', (email,)).fetchone()
+            if row:
+                user_id = row['id'] if hasattr(row, 'keys') else row[0]
+
         conn.close()
 
+        if not user_id:
+            flash('Could not create account due to a database error. Please try again.', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        # 8. Clean session to prevent session mixing
+        session.clear()
         session['user_id'] = user_id
         session['user_name'] = name
         session['user_role'] = role
@@ -1226,6 +1306,34 @@ def toggle_user_verification(id):
     conn.close()
     flash('User KYC verification status updated.', 'info')
     return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/seed-demo-data', methods=['POST'])
+@admin_required
+def admin_seed_data():
+    conn = get_db_connection()
+    seed_demo_data(conn)
+    conn.close()
+    flash('⚡ All demonstration campus stores, products, and sample live deliveries successfully loaded!', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/health/db')
+def db_health():
+    try:
+        conn = get_db_connection()
+        is_pg = hasattr(conn, '_conn')
+        users_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        shops_count = conn.execute("SELECT COUNT(*) FROM shops").fetchone()[0]
+        products_count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+        conn.close()
+        return jsonify({
+            'status': 'ok',
+            'db_engine': 'PostgreSQL' if is_pg else 'SQLite',
+            'users_count': users_count,
+            'shops_count': shops_count,
+            'products_count': products_count
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/favicon.ico')
 def favicon():

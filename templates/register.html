@@ -69,10 +69,11 @@
             id="phone"
             name="phone"
             class="form-control"
-            placeholder="+91 98765 43210"
+            placeholder="e.g. 9876543210"
             value="{{ form_data.get('phone', '') }}"
             required
           >
+          <small style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">10-digit mobile number</small>
         </div>
       </div>
 

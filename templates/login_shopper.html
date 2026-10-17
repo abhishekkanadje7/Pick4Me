@@ -14,13 +14,13 @@
 
     <form method="POST" action="{{ url_for('login') }}">
       <div class="form-group">
-        <label for="email" class="form-label">Email Address</label>
+        <label for="email" class="form-label">Email Address or Mobile Number</label>
         <input
-          type="email"
+          type="text"
           id="email"
           name="email"
           class="form-control"
-          placeholder="Enter your registered merchant / shopper email"
+          placeholder="Enter registered merchant email or 10-digit mobile"
           required
           autofocus
         >

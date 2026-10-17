@@ -23,13 +23,14 @@
 
     <form method="POST" action="{{ url_for('login') }}">
       <div class="form-group">
-        <label for="login_email" class="form-label">Email Address</label>
+        <label for="login_email" class="form-label">Email Address or Mobile Number</label>
         <input
-          type="email"
+          type="text"
           id="login_email"
           name="email"
           class="form-control"
-          placeholder="Enter your registered email address"
+          placeholder="Enter registered email or 10-digit mobile number"
+          value="{{ form_data.get('email', '') if form_data else '' }}"
           required
           autofocus
         >
