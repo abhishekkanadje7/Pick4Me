@@ -1,22 +1,134 @@
 import sqlite3
 import os
 import random
+import re
 from werkzeug.security import generate_password_hash
 
+DATABASE_URL = os.environ.get('DATABASE_URL')
 DATABASE_NAME = os.environ.get('DATABASE_PATH', os.path.join(os.path.dirname(__file__), 'pick4me.db'))
 
+# Optional PostgreSQL support via psycopg2
+try:
+    import psycopg2
+    import psycopg2.extras
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+
+
+class PostgresCursorWrapper:
+    def __init__(self, pg_cursor):
+        self._cursor = pg_cursor
+        self.lastrowid = None
+
+    def execute(self, sql, params=None):
+        if params is None:
+            params = ()
+        
+        # Replace ? placeholder with %s for PostgreSQL
+        sql_pg = sql.replace('?', '%s')
+        
+        # In PostgreSQL, ignore SQLite PRAGMA
+        if sql_pg.strip().upper().startswith('PRAGMA'):
+            return self
+
+        # Check if INSERT without RETURNING
+        is_insert = bool(re.match(r'^\s*INSERT\s+INTO\s+', sql_pg, re.IGNORECASE))
+        has_returning = bool(re.search(r'\bRETURNING\b', sql_pg, re.IGNORECASE))
+        
+        appended_returning = False
+        if is_insert and not has_returning:
+            sql_pg = sql_pg.rstrip('; \t\r\n') + ' RETURNING id;'
+            appended_returning = True
+
+        self._cursor.execute(sql_pg, params)
+
+        if appended_returning:
+            try:
+                res = self._cursor.fetchone()
+                if res:
+                    self.lastrowid = res[0]
+            except Exception:
+                self.lastrowid = None
+        
+        return self
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+    def fetchmany(self, size=None):
+        return self._cursor.fetchmany(size) if size else self._cursor.fetchmany()
+
+    @property
+    def description(self):
+        return self._cursor.description
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+    def close(self):
+        return self._cursor.close()
+
+    def __iter__(self):
+        return iter(self._cursor)
+
+
+class PostgresConnectionWrapper:
+    def __init__(self, pg_conn):
+        self._conn = pg_conn
+        self.row_factory = None  # Compatible with conn.row_factory = sqlite3.Row
+
+    def cursor(self):
+        cur = self._conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        return PostgresCursorWrapper(cur)
+
+    def execute(self, sql, params=None):
+        if sql.strip().upper().startswith('PRAGMA'):
+            return None
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def commit(self):
+        return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
+
+    def close(self):
+        return self._conn.close()
+
+
 def get_db_connection():
-    conn = sqlite3.connect(DATABASE_NAME)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    if DATABASE_URL and PSYCOPG2_AVAILABLE:
+        url = DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        pg_conn = psycopg2.connect(url)
+        return PostgresConnectionWrapper(pg_conn)
+    else:
+        conn = sqlite3.connect(DATABASE_NAME)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
 
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
+    is_postgres = bool(DATABASE_URL and PSYCOPG2_AVAILABLE)
+
+    def adapt_schema(sql):
+        if is_postgres:
+            return sql.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+        return sql
 
     # 1. Users Table
-    cursor.execute('''
+    cursor.execute(adapt_schema('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -32,10 +144,10 @@ def init_db():
             id_proof TEXT DEFAULT 'Verified Campus Member',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
+    '''))
 
     # 2. Shops Table (Managed by Shoppers/Merchants)
-    cursor.execute('''
+    cursor.execute(adapt_schema('''
         CREATE TABLE IF NOT EXISTS shops (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             owner_id INTEGER NOT NULL,
@@ -50,10 +162,10 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
         )
-    ''')
+    '''))
 
     # 3. Products Table
-    cursor.execute('''
+    cursor.execute(adapt_schema('''
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             shop_id INTEGER NOT NULL,
@@ -66,10 +178,10 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (shop_id) REFERENCES shops (id) ON DELETE CASCADE
         )
-    ''')
+    '''))
 
     # 4. Cart Items Table
-    cursor.execute('''
+    cursor.execute(adapt_schema('''
         CREATE TABLE IF NOT EXISTS cart_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -79,20 +191,20 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
             FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
         )
-    ''')
+    '''))
 
     # 5. Orders Table: 3-Party Logistics (Customer A + Customer B Commuter + Shopper Store + Admin Escrow)
-    cursor.execute('''
+    cursor.execute(adapt_schema('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_type TEXT NOT NULL DEFAULT 'shop_order', -- 'shop_order' or 'custom_request'
-            customer_id INTEGER NOT NULL, -- Customer A (Buyer)
-            commuter_id INTEGER DEFAULT NULL, -- Customer B (Deliverer / Commuter)
-            shop_id INTEGER DEFAULT NULL, -- Shop (owned by Shopper/Merchant)
+            order_type TEXT NOT NULL DEFAULT 'shop_order',
+            customer_id INTEGER NOT NULL,
+            commuter_id INTEGER DEFAULT NULL,
+            shop_id INTEGER DEFAULT NULL,
             items_summary TEXT NOT NULL,
-            product_amount REAL NOT NULL, -- Amount credited to Shopper upon shop pickup
-            delivery_fee REAL NOT NULL, -- Reward credited to Customer B upon delivery
-            total_amount REAL NOT NULL, -- Total advance escrow paid by Customer A
+            product_amount REAL NOT NULL,
+            delivery_fee REAL NOT NULL,
+            total_amount REAL NOT NULL,
             distance_tier TEXT NOT NULL DEFAULT 'within_campus',
             distance_km REAL NOT NULL DEFAULT 0.8,
             is_urgent INTEGER NOT NULL DEFAULT 0,
@@ -104,36 +216,36 @@ def init_db():
             speed_bonus REAL NOT NULL DEFAULT 0.0,
             delay_penalty REAL NOT NULL DEFAULT 0.0,
             final_payout REAL DEFAULT NULL,
-            payment_status TEXT NOT NULL DEFAULT 'Pending_Payment', -- 'Pending_Payment', 'Escrow_Held', 'Fully_Settled', 'Refunded'
-            shop_payment_status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Released_To_Shop'
-            delivery_payment_status TEXT NOT NULL DEFAULT 'Pending', -- 'Pending', 'Released_To_Commuter'
-            pickup_otp TEXT NOT NULL, -- 4-digit code for Stage 1 (Shop -> Customer B)
-            delivery_otp TEXT NOT NULL, -- 4-digit code for Stage 2 (Customer B -> Customer A)
+            payment_status TEXT NOT NULL DEFAULT 'Pending_Payment',
+            shop_payment_status TEXT NOT NULL DEFAULT 'Pending',
+            delivery_payment_status TEXT NOT NULL DEFAULT 'Pending',
+            pickup_otp TEXT NOT NULL,
+            delivery_otp TEXT NOT NULL,
             delivery_address TEXT NOT NULL,
             phone TEXT NOT NULL,
             instructions TEXT DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'Paid_Pending_Commuter', -- 'Pending_Payment', 'Paid_Pending_Commuter', 'Accepted_By_Commuter', 'Picked_Up_From_Shop', 'Delivered_To_Customer', 'Completed', 'Cancelled'
+            status TEXT NOT NULL DEFAULT 'Paid_Pending_Commuter',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES users (id),
             FOREIGN KEY (commuter_id) REFERENCES users (id),
             FOREIGN KEY (shop_id) REFERENCES shops (id)
         )
-    ''')
+    '''))
 
     # 6. Wallet Transactions Table
-    cursor.execute('''
+    cursor.execute(adapt_schema('''
         CREATE TABLE IF NOT EXISTS wallet_transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             order_id INTEGER DEFAULT NULL,
             amount REAL NOT NULL,
-            type TEXT NOT NULL, -- 'credit_earnings', 'credit_product_sale', 'debit_withdrawal'
+            type TEXT NOT NULL,
             description TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
-    ''')
+    '''))
 
     # 7. Ensure Abhishek Kanadje's Verified Admin is configured
     cursor.execute("SELECT id FROM users WHERE email = 'abhishekkanadje7@gmail.com'")
@@ -161,6 +273,7 @@ def init_db():
 
     conn.commit()
     conn.close()
+
 
 def generate_otp():
     """Generates a secure 4-digit handover OTP."""
