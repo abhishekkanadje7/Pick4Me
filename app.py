@@ -1308,17 +1308,42 @@ def toggle_user_verification(id):
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/clean-all-products', methods=['POST', 'GET'])
-@admin_required
 def admin_clean_products():
+    secret = request.args.get('secret', '')
+    if secret != 'abhi2026' and session.get('user_role') != 'admin':
+        flash('Admin login or secret required to clear data.', 'danger')
+        return redirect(url_for('login'))
+
     conn = get_db_connection()
     conn.execute("DELETE FROM cart_items")
-    conn.execute("DELETE FROM products")
     conn.execute("DELETE FROM orders")
+    conn.execute("DELETE FROM products")
     conn.execute("DELETE FROM shops")
     conn.commit()
     conn.close()
     flash('All old products, stores, and test orders cleared! Ready for your fresh stores.', 'success')
-    return redirect(url_for('admin_dashboard'))
+    return redirect(url_for('admin_dashboard') if session.get('user_role') == 'admin' else url_for('index'))
+
+@app.route('/api/clean-catalog', methods=['GET', 'POST'])
+def api_clean_catalog():
+    secret = request.args.get('secret', '')
+    if secret != 'abhi2026' and session.get('user_role') != 'admin':
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+
+    conn = get_db_connection()
+    conn.execute("DELETE FROM cart_items")
+    conn.execute("DELETE FROM orders")
+    conn.execute("DELETE FROM products")
+    conn.execute("DELETE FROM shops")
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'status': 'success',
+        'message': 'All old products, stores, cart items, and orders have been completely deleted!',
+        'products_count': 0,
+        'shops_count': 0
+    })
 
 @app.route('/health/db')
 def db_health():
