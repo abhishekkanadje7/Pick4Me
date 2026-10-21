@@ -21,7 +21,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 with app.app_context():
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        print(f"[Pick4Me Startup Notice] init_db warning during startup: {e}")
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

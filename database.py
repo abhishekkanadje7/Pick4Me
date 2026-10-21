@@ -45,7 +45,14 @@ class PostgresCursorWrapper:
             sql_pg = sql_pg.rstrip('; \t\r\n') + ' RETURNING id;'
             appended_returning = True
 
-        self._cursor.execute(sql_pg, params)
+        try:
+            self._cursor.execute(sql_pg, params)
+        except Exception as e:
+            try:
+                self._cursor.connection.rollback()
+            except Exception:
+                pass
+            raise e
 
         if appended_returning:
             try:
@@ -98,13 +105,25 @@ class PostgresConnectionWrapper:
         return cur
 
     def commit(self):
-        return self._conn.commit()
+        try:
+            return self._conn.commit()
+        except Exception:
+            try:
+                self._conn.rollback()
+            except Exception:
+                pass
 
     def rollback(self):
-        return self._conn.rollback()
+        try:
+            return self._conn.rollback()
+        except Exception:
+            pass
 
     def close(self):
-        return self._conn.close()
+        try:
+            return self._conn.close()
+        except Exception:
+            pass
 
 
 def get_db_connection():
@@ -112,19 +131,27 @@ def get_db_connection():
         url = DATABASE_URL
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
-        pg_conn = psycopg2.connect(url)
-        return PostgresConnectionWrapper(pg_conn)
-    else:
-        conn = sqlite3.connect(DATABASE_NAME)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
+        try:
+            pg_conn = psycopg2.connect(url, connect_timeout=10)
+            return PostgresConnectionWrapper(pg_conn)
+        except Exception as e:
+            print(f"[Pick4Me DB Warning] PostgreSQL connection failed: {e}. Falling back to SQLite.")
+
+    conn = sqlite3.connect(DATABASE_NAME)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
 def init_db():
-    conn = get_db_connection()
+    try:
+        conn = get_db_connection()
+    except Exception as e:
+        print(f"[Pick4Me DB Warning] Could not open database connection in init_db: {e}")
+        return
+
     cursor = conn.cursor()
-    is_postgres = bool(DATABASE_URL and PSYCOPG2_AVAILABLE)
+    is_postgres = hasattr(conn, '_conn')
 
     def adapt_schema(sql):
         if is_postgres:
@@ -241,13 +268,28 @@ def init_db():
     '''))
 
     # Safe schema migration for feedback columns if table already exists
-    for col, col_type in [('feedback_rating', 'INTEGER DEFAULT NULL'),
-                          ('feedback_comment', "TEXT DEFAULT ''"),
-                          ('feedback_submitted_at', 'TIMESTAMP DEFAULT NULL')]:
-        try:
-            cursor.execute(f"ALTER TABLE orders ADD COLUMN {col} {col_type}")
-        except sqlite3.OperationalError:
-            pass
+    if is_postgres:
+        for col, col_type in [('feedback_rating', 'INTEGER DEFAULT NULL'),
+                              ('feedback_comment', "TEXT DEFAULT ''"),
+                              ('feedback_submitted_at', 'TIMESTAMP DEFAULT NULL')]:
+            try:
+                cursor.execute(f"ALTER TABLE orders ADD COLUMN IF NOT EXISTS {col} {col_type}")
+                conn.commit()
+            except Exception as e:
+                print(f"[Pick4Me Migration Notice] Column {col} check: {e}")
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+    else:
+        for col, col_type in [('feedback_rating', 'INTEGER DEFAULT NULL'),
+                              ('feedback_comment', "TEXT DEFAULT ''"),
+                              ('feedback_submitted_at', 'TIMESTAMP DEFAULT NULL')]:
+            try:
+                cursor.execute(f"ALTER TABLE orders ADD COLUMN {col} {col_type}")
+                conn.commit()
+            except Exception:
+                pass
 
     # 6. Wallet Transactions Table
     cursor.execute(adapt_schema('''
@@ -264,31 +306,45 @@ def init_db():
     '''))
 
     # 7. Ensure Abhishek Kanadje's Verified Admin is configured
-    cursor.execute("SELECT id FROM users WHERE email = 'abhishekkanadje7@gmail.com'")
-    existing_admin = cursor.fetchone()
-    if not existing_admin:
-        cursor.execute('''
-            INSERT INTO users (name, email, phone, password_hash, role, location, upi_id, qr_code, is_verified, wallet_balance)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0.0)
-        ''', (
-            'Abhishek Kanadje',
-            'abhishekkanadje7@gmail.com',
-            '+91 73871 57739',
-            generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),
-            'admin',
-            'Campus Central Headquarters',
-            '7387157739@upi',
-            'upi_qr.png'
-        ))
-    else:
-        cursor.execute('''
-            UPDATE users
-            SET password_hash = ?, role = 'admin', upi_id = '7387157739@upi', qr_code = 'upi_qr.png', is_verified = 1
-            WHERE email = 'abhishekkanadje7@gmail.com'
-        ''', (generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),))
+    try:
+        cursor.execute("SELECT id FROM users WHERE email = 'abhishekkanadje7@gmail.com'")
+        existing_admin = cursor.fetchone()
+        if not existing_admin:
+            cursor.execute('''
+                INSERT INTO users (name, email, phone, password_hash, role, location, upi_id, qr_code, is_verified, wallet_balance)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0.0)
+            ''', (
+                'Abhishek Kanadje',
+                'abhishekkanadje7@gmail.com',
+                '+91 73871 57739',
+                generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),
+                'admin',
+                'Campus Central Headquarters',
+                '7387157739@upi',
+                'upi_qr.png'
+            ))
+        else:
+            cursor.execute('''
+                UPDATE users
+                SET password_hash = ?, role = 'admin', upi_id = '7387157739@upi', qr_code = 'upi_qr.png', is_verified = 1
+                WHERE email = 'abhishekkanadje7@gmail.com'
+            ''', (generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),))
+        conn.commit()
+    except Exception as e:
+        print(f"[Pick4Me Admin Setup Notice] {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
-    conn.commit()
-    conn.close()
+    try:
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.close()
+    except Exception:
+        pass
 
 
 def generate_otp():
