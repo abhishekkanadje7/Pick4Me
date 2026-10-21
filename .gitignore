@@ -35,3 +35,11 @@ Thumbs.db
 static/uploads/*
 !static/uploads/.gitkeep
 !static/uploads/default_qr.png
+
+# Presentations & Binary Documents
+*.pdf
+*.pptx
+*.ppt
+*.docx
+*.zip
+*.tar.gz
