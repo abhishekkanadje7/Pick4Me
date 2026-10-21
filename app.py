@@ -1,3 +1,40 @@
+"""
+========================================================================================
+  PICK4ME — HYPERLOCAL CAMPUS MARKETPLACE & PEER COMMUTE DELIVERY PLATFORM
+  B.Tech CSBS Mini Project 2026
+========================================================================================
+
+  🎓 VIVA / PRESENTATION QUICK CODE NAVIGATION CHEAT SHEET:
+  --------------------------------------------------------------------------------------
+  1. DELIVERY PRICING & SLA LOGIC:
+     - Function: `calculate_delivery_reward(distance_tier, is_urgent)`
+     - Location: Line ~80 (change base fees ₹20, ₹35, ₹55 or rush fee ₹15)
+  2. STAGE 1: SHOP PICKUP & SHOPKEEPER PAYOUT:
+     - Function: `confirm_shop_pickup(id)`
+     - Route: POST `/orders/<id>/confirm-pickup`
+     - Releases item amount to shopkeeper wallet from Escrow
+  3. STAGE 2: CUSTOMER OTP HANDOVER & COMMUTER PAYOUT:
+     - Function: `verify_delivery_otp(id)`
+     - Route: POST `/orders/<id>/verify-delivery-otp`
+     - Verifies 4-digit OTP, calculates speed bonus / penalty, releases delivery payout
+  4. PEER COMMUTE MARKETPLACE (COMMUTER B BROWSING):
+     - Function: `deliveries_feed()` & `accept_delivery(id)`
+     - Routes: GET `/deliveries`, POST `/orders/<id>/accept`
+  5. CART & CHECKOUT (CUSTOMER A):
+     - Routes: `/cart`, `/cart/add`, `/cart/checkout`
+  6. CUSTOM ERRANDS:
+     - Route: `/requests/create`
+  7. ESCROW ADVANCE PAYMENT:
+     - Routes: `/orders/<id>/advance-payment`, `/orders/<id>/process-advance-payment`
+  8. LIVE CALLING & CUSTOMER 5-STAR FEEDBACK:
+     - Route: POST `/orders/<id>/feedback` (saves rating 1-5 and comment)
+     - Audio Calling: Web Audio API Synthesizer in `templates/order_details.html`
+  9. ADMIN DASHBOARD & RICH CATALOG SEEDER:
+     - Routes: `/admin/dashboard`, `/api/seed-rich-catalog`
+  10. DATABASE ENGINE & HEALTH CHECK:
+     - Route: GET `/health/db` (checks PostgreSQL / SQLite connection status)
+========================================================================================
+"""
 import os
 import re
 import uuid
@@ -20,6 +57,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Safe database initialization on server boot
 with app.app_context():
     try:
         init_db()
@@ -27,28 +65,52 @@ with app.app_context():
         print(f"[Pick4Me Startup Notice] init_db warning during startup: {e}")
 
 def allowed_file(filename):
+    """Validates permitted file extensions for image uploads."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def calculate_delivery_reward(distance_tier='within_campus', is_urgent=False):
     """
-    Calculates base delivery reward and SLA target time based on distance zone:
-    - Within Campus (0–1 km): ₹20 base, 0.8 km, 25 mins SLA
-    - Near Gate (1–2.5 km): ₹35 base, 1.8 km, 35 mins SLA
-    - Outer Market (2.5–5 km+): ₹55 base, 3.8 km, 50 mins SLA
-    - Rush Priority: +₹15 surge fee, high-speed target
+    ==================================================================================
+    💰 PRICING & SLA ENGINE (Frequently asked in Viva)
+    ==================================================================================
+    To change delivery pricing or SLA targets if requested by evaluator:
+    - Change 'base_fee' below (e.g. 20.0 -> 25.0)
+    - Change 'sla_mins' below (e.g. 25 -> 20)
+    - Change 'is_urgent' rush fee (currently +₹15.0)
+    ==================================================================================
     """
     tier_map = {
-        'within_campus': {'base_fee': 20.0, 'km': 0.8, 'sla_mins': 25, 'name': 'Within Campus (0–1 km)'},
-        'near_gate': {'base_fee': 35.0, 'km': 1.8, 'sla_mins': 35, 'name': 'Near Gate Market (1–2.5 km)'},
-        'outer_market': {'base_fee': 55.0, 'km': 3.8, 'sla_mins': 50, 'name': 'Outer Town Market (2.5–5 km+)'}
+        # Zone 1: Inside Campus Hostels, Departments, Labs (0–1 km)
+        'within_campus': {
+            'base_fee': 20.0,    # Base payout to student commuter in ₹
+            'km': 0.8,           # Estimated average campus transit distance
+            'sla_mins': 25,      # SLA target delivery time in minutes
+            'name': 'Within Campus (0–1 km)'
+        },
+        # Zone 2: College Main Gate & Peripheral Market (1–2.5 km)
+        'near_gate': {
+            'base_fee': 35.0,    # Base payout to commuter in ₹
+            'km': 1.8,
+            'sla_mins': 35,
+            'name': 'Near Gate Market (1–2.5 km)'
+        },
+        # Zone 3: Outer Town Market / Remote Stores (2.5–5 km+)
+        'outer_market': {
+            'base_fee': 55.0,    # Base payout to commuter in ₹
+            'km': 3.8,
+            'sla_mins': 50,
+            'name': 'Outer Town Market (2.5–5 km+)'
+        }
     }
+    
     tier_info = tier_map.get(distance_tier, tier_map['within_campus'])
     fee = tier_info['base_fee']
     sla = tier_info['sla_mins']
 
+    # Rush / Urgent surge delivery bonus
     if is_urgent:
-        fee += 15.0
-        sla = max(15, sla - 10)
+        fee += 15.0              # Surge bonus added to commuter payout
+        sla = max(15, sla - 10)  # Accelerated delivery target time
 
     return fee, tier_info['km'], sla
 
@@ -741,15 +803,23 @@ def verify_delivery_otp(id):
         except Exception:
             actual_mins = 15
 
+    # --------------------------------------------------------------------------
+    # ⏱️ SPEED BONUS & DELAY PENALTY ALGORITHM (Viva Highlight)
+    # --------------------------------------------------------------------------
+    # - If delivered early (<= 65% of target SLA): +₹10.0 speed bonus awarded!
+    # - If delivered significantly late (> 140% of target SLA): -₹10.0 delay penalty!
+    # - Guaranteed Minimum Commuter Payout: ₹10.0 (commuter is never paid less than ₹10)
+    # --------------------------------------------------------------------------
     target_sla = order['target_duration_mins']
     speed_bonus = 0.0
     delay_penalty = 0.0
 
     if actual_mins <= int(target_sla * 0.65):
-        speed_bonus = 10.0
+        speed_bonus = 10.0   # Fast delivery incentive in ₹
     elif actual_mins > int(target_sla * 1.4):
-        delay_penalty = 10.0
+        delay_penalty = 10.0 # Late delivery deduction in ₹
 
+    # Final payout calculation with ₹10 minimum safety floor
     final_delivery_reward = max(10.0, float(order['delivery_fee']) + speed_bonus - delay_penalty)
     commuter_id = order['commuter_id']
 
@@ -873,6 +943,12 @@ def order_details(id):
 @app.route('/orders/<int:id>/feedback', methods=['POST'])
 @login_required
 def submit_order_feedback(id):
+    """
+    ⭐ CUSTOMER 5-STAR RATING & REVIEW SYSTEM:
+    - Allows Customer A (order creator) or Admin to submit 1-to-5 star rating and feedback comment.
+    - Only allowed AFTER order is in 'Completed' status.
+    - Saves feedback_rating, feedback_comment, and feedback_submitted_at in `orders` table.
+    """
     user_id = session['user_id']
     rating = request.form.get('rating', type=int)
     comment = request.form.get('comment', '').strip()

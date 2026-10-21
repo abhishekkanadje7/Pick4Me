@@ -1,17 +1,30 @@
+"""
+========================================================================================
+  PICK4ME DATABASE MODULE (PostgreSQL Neon + SQLite Dual Engine)
+========================================================================================
+  Architecture:
+  1. Cloud / Production (Render):
+     - Uses Neon Serverless PostgreSQL via DATABASE_URL environment variable.
+     - Automatically adapts schema (SERIAL PRIMARY KEY, %s parameter binding, RETURNING id).
+  2. Local Offline Development:
+     - Uses local SQLite database (pick4me.db).
+  3. Resilience:
+     - Automatically falls back to SQLite if PostgreSQL connection fails or times out.
+     - Auto-recovers from failed transactions with connection rollback.
+========================================================================================
+"""
 import sqlite3
 import os
 import random
 import re
 from werkzeug.security import generate_password_hash
 
+# Database Configuration (Neon PostgreSQL on Cloud, SQLite for Local)
 DATABASE_URL = os.environ.get('DATABASE_URL')
-if os.environ.get('VERCEL'):
-    DEFAULT_DB = '/tmp/pick4me.db'
-else:
-    DEFAULT_DB = os.path.join(os.path.dirname(__file__), 'pick4me.db')
+DEFAULT_DB = os.path.join(os.path.dirname(__file__), 'pick4me.db')
 DATABASE_NAME = os.environ.get('DATABASE_PATH', DEFAULT_DB)
 
-# Optional PostgreSQL support via psycopg2
+# Optional PostgreSQL driver support via psycopg2
 try:
     import psycopg2
     import psycopg2.extras
