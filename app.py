@@ -1366,26 +1366,172 @@ def admin_clean_products():
     flash('All old products, stores, and test orders cleared! Ready for your fresh stores.', 'success')
     return redirect(url_for('admin_dashboard') if session.get('user_role') == 'admin' else url_for('index'))
 
-@app.route('/api/clean-catalog', methods=['GET', 'POST'])
-def api_clean_catalog():
+@app.route('/admin/seed-rich-catalog', methods=['GET', 'POST'])
+@admin_required
+def admin_seed_rich_catalog():
+    seed_catalog_data()
+    flash('🎉 Rich Campus Catalog Loaded! 5 verified campus stores and 28 products are now active.', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/api/seed-rich-catalog', methods=['GET', 'POST'])
+def api_seed_rich_catalog():
     secret = request.args.get('secret', '')
     if secret != 'abhi2026' and session.get('user_role') != 'admin':
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
 
-    conn = get_db_connection()
-    conn.execute("DELETE FROM cart_items")
-    conn.execute("DELETE FROM orders")
-    conn.execute("DELETE FROM products")
-    conn.execute("DELETE FROM shops")
-    conn.commit()
-    conn.close()
-
+    count = seed_catalog_data()
     return jsonify({
         'status': 'success',
-        'message': 'All old products, stores, cart items, and orders have been completely deleted!',
-        'products_count': 0,
-        'shops_count': 0
+        'message': f'Successfully loaded {count} products across 5 campus stores into live database!',
+        'stores_count': 5,
+        'products_count': count
     })
+
+def seed_catalog_data():
+    conn = get_db_connection()
+    is_pg = hasattr(conn, '_conn')
+
+    # 1. Stores & Merchant Data
+    merchants = [
+        {
+            'name': 'Amit Sharma (Stationery & Xerox)',
+            'email': 'amit.stationery@campus.edu',
+            'phone': '9876543211',
+            'location': 'Near Gate 1 Student Complex',
+            'shop_name': 'Amit Campus Stationery & Xerox Hub',
+            'category': 'Stationery & Books',
+            'address': 'Shop No. 4, Student Plaza, Near Gate 1',
+            'phone_shop': '9876543211',
+            'desc': 'Academic Lab Manuals, Engineering Drafters, Xerox, Spiral Binding & Classmate Notebooks.'
+        },
+        {
+            'name': 'Chef Vikram Patil (Campus Canteen)',
+            'email': 'canteen.nescafe@campus.edu',
+            'phone': '9876543212',
+            'location': 'Central Canteen Complex',
+            'shop_name': 'Campus Nescafe & Student Canteen',
+            'category': 'Food & Beverages',
+            'address': 'Ground Floor, Central Canteen Complex',
+            'phone_shop': '9876543212',
+            'desc': 'Freshly brewed Nescafe coffee, hot grilled sandwiches, Maggi, Red Bull, and campus snacks.'
+        },
+        {
+            'name': 'Rohan Mehta (Gadgets & Tech)',
+            'email': 'rohan.tech@campus.edu',
+            'phone': '9876543213',
+            'location': 'Academic Block B Foyer',
+            'shop_name': 'Campus Tech & Mobile Accessories',
+            'category': 'Electronics & Gadgets',
+            'address': 'Kiosk 2, Academic Block B Foyer',
+            'phone_shop': '9876543213',
+            'desc': 'Type-C fast chargers, boAt earphones, power banks, USB drives, scientific calculators & OTG adapters.'
+        },
+        {
+            'name': 'Dr. Sneha Kulkarni (Campus Pharmacy)',
+            'email': 'sneha.meds@campus.edu',
+            'phone': '9876543214',
+            'location': 'Student Health Centre',
+            'shop_name': 'Campus Pharmacy & Health Care',
+            'category': 'Health & Medicines',
+            'address': 'Shop 1, Health Centre Wing, Opposite Hostel 2',
+            'phone_shop': '9876543214',
+            'desc': 'Essential first aid, Crocin, pain relief sprays, band-aids, ORS energy drinks, vitamins & cold balms.'
+        },
+        {
+            'name': 'Sameer Khan (Night Mart)',
+            'email': 'sameer.mart@campus.edu',
+            'phone': '9876543215',
+            'location': 'Hostel Circle',
+            'shop_name': 'Hostel Night Mart & Essentials',
+            'category': 'Groceries & Essentials',
+            'address': 'Ground Floor, Common Hall, Hostel Circle',
+            'phone_shop': '9876543215',
+            'desc': 'Midnight instant noodles, detergent powder, shampoo sachets, peanut butter, and hygiene essentials.'
+        }
+    ]
+
+    shop_ids = []
+    pwd_hash = generate_password_hash('password123', method='pbkdf2:sha256')
+
+    for m in merchants:
+        # Check if merchant exists
+        user = conn.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (m['email'],)).fetchone()
+        if not user:
+            conn.execute('''
+                INSERT INTO users (name, email, phone, password_hash, role, location, upi_id, qr_code, is_verified, wallet_balance)
+                VALUES (?, ?, ?, ?, 'shopper', ?, '7387157739@upi', 'upi_qr.png', 1, 0.0)
+            ''', (m['name'], m['email'], m['phone'], pwd_hash, m['location']))
+            user = conn.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (m['email'],)).fetchone()
+
+        user_id = user['id'] if hasattr(user, 'keys') else user[0]
+
+        # Check or create shop
+        shop = conn.execute("SELECT id FROM shops WHERE owner_id = ?", (user_id,)).fetchone()
+        if not shop:
+            conn.execute('''
+                INSERT INTO shops (owner_id, shop_name, category, address, phone, description, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
+            ''', (user_id, m['shop_name'], m['category'], m['address'], m['phone_shop'], m['desc']))
+            shop = conn.execute("SELECT id FROM shops WHERE owner_id = ?", (user_id,)).fetchone()
+
+        s_id = shop['id'] if hasattr(shop, 'keys') else shop[0]
+        shop_ids.append(s_id)
+
+    # 2. Rich Catalog Products
+    products_list = [
+        # Store 1: Stationery (shop_ids[0])
+        (shop_ids[0], 'Classmate Spiral Notebook (300 Pages, Unruled/Ruled)', 'Stationery & Books', 120.0, 'Heavy-duty binding with premium smooth paper, ideal for university semester notes.'),
+        (shop_ids[0], 'Engineering Mini Drafter with Stainless Steel Arm', 'Stationery & Books', 420.0, 'Official engineering drawing equipment with carrying canvas case and clamps.'),
+        (shop_ids[0], 'Casio FX-991CW ClassWiz Scientific Calculator', 'Stationery & Books', 980.0, 'Latest high-speed engineering math calculator with natural textbook display.'),
+        (shop_ids[0], 'Parker Vector Stainless Steel Rollerball Pen (Blue)', 'Stationery & Books', 160.0, 'Smooth ink flow refillable pen for exams, assignments, and presentations.'),
+        (shop_ids[0], 'A4 Bond Printing & Xerox Paper Ream (500 Sheets)', 'Stationery & Books', 320.0, '75 GSM ultra-bright white paper for project report printouts and black/white copies.'),
+        (shop_ids[0], 'Engineering Drawing Sheets (Pack of 5) + Plastic Tube Container', 'Stationery & Books', 150.0, 'Standard Imperial size drafting sheets with protective waterproof carrier tube.'),
+
+        # Store 2: Canteen (shop_ids[1])
+        (shop_ids[1], 'Grilled Cheesy Paneer Sandwich with Mint Chutney', 'Food & Beverages', 90.0, 'Loaded with fresh malai paneer, melted mozzarella cheese, and crispy grilled bread.'),
+        (shop_ids[1], 'Hot Hazelnut Nescafe Cappuccino (Large Cup)', 'Food & Beverages', 60.0, 'Rich aromatic frothy coffee made with whole milk and natural roasted hazelnut syrup.'),
+        (shop_ids[1], 'Maggi 2-Minute Double Masala Cheese Bowl', 'Food & Beverages', 55.0, 'Late-night classic double noodle bowl topped with melted cheese and peri-peri seasoning.'),
+        (shop_ids[1], 'Red Bull Energy Drink (250ml Sealed Can)', 'Food & Beverages', 125.0, 'Revitalizes body and mind during exam all-nighters and intense hackathon coding.'),
+        (shop_ids[1], 'Amul Taaza Cold Coffee Milk Drink (200ml)', 'Food & Beverages', 40.0, 'Refreshing chilled milk beverage for quick midday energy between campus lectures.'),
+        (shop_ids[1], 'Cadbury Dairy Milk Silk Roasted Almond Bar (55g)', 'Food & Beverages', 95.0, 'Smooth creamy chocolate filled with whole roasted crunchy California almonds.'),
+
+        # Store 3: Tech & Electronics (shop_ids[2])
+        (shop_ids[2], 'boAt Bassheads 242 Tangle-Free Wired Earphones', 'Electronics & Gadgets', 399.0, 'Deep bass 10mm dynamic drivers with in-line HD mic and sweatproof secure-fit hooks.'),
+        (shop_ids[2], '65W Fast-Charging Braided Type-C to Type-C Cable (1.5m)', 'Electronics & Gadgets', 249.0, 'Heavy-duty nylon braided cable supporting Power Delivery (PD) for laptops and smartphones.'),
+        (shop_ids[2], '10,000mAh Dual-Port Quick Charge Power Bank', 'Electronics & Gadgets', 899.0, 'Compact pocket-friendly battery backup with 22.5W high-speed two-way charging.'),
+        (shop_ids[2], 'SanDisk Ultra 64GB USB 3.0 High-Speed Pen Drive', 'Electronics & Gadgets', 449.0, 'Transfer software, lab codes, and movies up to 130MB/s with metal swivel loop.'),
+        (shop_ids[2], 'Silent Click Ergonomic 2.4GHz Wireless Optical Mouse', 'Electronics & Gadgets', 499.0, 'Whisper-quiet clicks for library study rooms, with nano USB receiver and DPI switch.'),
+
+        # Store 4: Pharmacy (shop_ids[3])
+        (shop_ids[3], 'Crocin 650 Advance Fast Relief Paracetamol (Pack of 15)', 'Health & Medicines', 32.0, 'Optizorb technology for quick headache, body ache, and mild campus fever relief.'),
+        (shop_ids[3], 'Volini Pain Relief Fast Action Spray (55g)', 'Health & Medicines', 145.0, 'Micro-particles provide instant deep heat relief for sports injuries, backache, and sprains.'),
+        (shop_ids[3], 'Dettol Antiseptic Disinfectant Liquid (125ml Bottle)', 'Health & Medicines', 85.0, 'Essential first aid liquid for cleaning minor hostel cuts, scratches, and scrapes.'),
+        (shop_ids[3], 'Band-Aid Waterproof Medicated Strips (Box of 20)', 'Health & Medicines', 50.0, 'Breathable sterile adhesive bandages with antiseptic pad for fast wound protection.'),
+        (shop_ids[3], 'ORS Ready-To-Drink Electrolyte Beverage (Apple Flavor, 200ml)', 'Health & Medicines', 30.0, 'Instant dehydration and energy recovery drink for hot sunny campus days and sports.'),
+        (shop_ids[3], 'Vicks Inhaler for Fast Nasal Relief (Pocket Size)', 'Health & Medicines', 65.0, 'Menthol and camphor vapor inhaler providing instant soothing relief for blocked noses.'),
+
+        # Store 5: Night Mart (shop_ids[4])
+        (shop_ids[4], 'Chocolate Crunchy High-Protein Peanut Butter (350g Jar)', 'Groceries & Essentials', 149.0, 'Pure roasted peanuts with rich dark chocolate, packed with 26g protein per 100g.'),
+        (shop_ids[4], 'Gillette Mach3 Turbo Shaving Razor + 2 Cartridges', 'Groceries & Essentials', 240.0, 'Friction-free blades with lubricating comfort strip for a smooth, close morning shave.'),
+        (shop_ids[4], 'Nivea Men Deep Impact 3-in-1 Shower Gel & Face Wash (250ml)', 'Groceries & Essentials', 180.0, 'Active micro-fine clay formula absorbs impurities and gives 24h woody fragrance freshness.'),
+        (shop_ids[4], 'Colgate MaxFresh Peppermint Cooling Crystals Toothpaste (150g)', 'Groceries & Essentials', 110.0, 'Burst of cooling crystals that fight bad breath and leave mouth feeling fresh all day.'),
+        (shop_ids[4], 'Surf Excel Quick Wash Detergent Powder (500g Pouch)', 'Groceries & Essentials', 75.0, 'Quick dissolution formula removes tough hostel stains effortlessly without soaking.'),
+        (shop_ids[4], 'Packaged Natural Mineral Water (1 Litre Bottle, Pack of 2)', 'Groceries & Essentials', 30.0, 'Sealed hygienic bottled drinking water delivered straight to your hostel room.')
+    ]
+
+    total_added = 0
+    for p in products_list:
+        existing = conn.execute("SELECT id FROM products WHERE shop_id = ? AND name = ?", (p[0], p[1])).fetchone()
+        if not existing:
+            conn.execute('''
+                INSERT INTO products (shop_id, name, category, price, description, in_stock)
+                VALUES (?, ?, ?, ?, ?, 1)
+            ''', p)
+            total_added += 1
+
+    conn.commit()
+    conn.close()
+    return total_added
 
 @app.route('/health/db')
 def db_health():

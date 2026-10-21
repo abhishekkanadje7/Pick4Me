@@ -11,10 +11,15 @@
       <h1>Admin Control Center 🛡️</h1>
       <p>System-wide metrics, KYC user verification, registered shops, and escrow ledger.</p>
     </div>
-    <div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <form method="POST" action="{{ url_for('admin_seed_rich_catalog') }}" onsubmit="return confirm('Load 5 campus stores with 28 realistic products into database?');">
+        <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.25rem; font-weight: 700; box-shadow: var(--shadow-md);">
+          ⚡ Load Rich Campus Catalog (5 Stores, 28 Items)
+        </button>
+      </form>
       <form method="POST" action="{{ url_for('admin_clean_products') }}" onsubmit="return confirm('Do you want to delete all old products, stores, and orders to start fresh?');">
         <button type="submit" class="btn" style="padding: 0.65rem 1.25rem; font-weight: 700; background: #e53e3e; color: #fff; border: none; border-radius: var(--radius-md); box-shadow: var(--shadow-md); cursor: pointer;">
-          🗑️ Clear All Old Products & Stores
+          🗑️ Clear All
         </button>
       </form>
     </div>
