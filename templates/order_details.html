@@ -61,6 +61,142 @@
     </div>
   </div>
 
+  <!-- LEAFLET.JS FREE MAP STYLES & RADAR ANIMATIONS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    @keyframes livePulseRadar {
+      0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 16px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    @keyframes liveBlinkDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.85); }
+    }
+    .live-dot-green {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: #10B981;
+      border-radius: 50%;
+      animation: liveBlinkDot 1.4s infinite ease-in-out;
+      margin-right: 6px;
+    }
+    .commuter-marker-pin {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #0F172A;
+      border: 3px solid #10B981;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      animation: livePulseRadar 2s infinite;
+      cursor: pointer;
+    }
+    .shop-marker-pin {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #10B981;
+      border: 3px solid #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    .dest-marker-pin {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #2563EB;
+      border: 3px solid #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      font-family: inherit;
+    }
+  </style>
+
+  <!-- ========================================================================= -->
+  <!-- 📍 ZOMATO-STYLE LIVE PARCEL & COMMUTER GPS RADAR (100% FREE LEAFLET)     -->
+  <!-- ========================================================================= -->
+  <div class="card" style="padding: 1.5rem; margin-bottom: 2rem; background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: var(--shadow-sm); border-radius: var(--radius-md);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+      <div style="display: flex; align-items: center;">
+        <span class="live-dot-green"></span>
+        <h3 style="margin: 0; font-size: 1.15rem; color: #0F172A; font-weight: 800;">
+          Live Campus Delivery Radar
+        </h3>
+        <span class="badge" style="background: #E0E7FF; color: #3730A3; margin-left: 0.6rem; font-size: 0.72rem; font-weight: 700;">
+          Zomato-Style Live GPS
+        </span>
+      </div>
+
+      <!-- Live ETA & Distance Pill -->
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        <div style="background: #F1F5F9; border: 1px solid #CBD5E1; padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.82rem; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 0.4rem;">
+          <span>⏱️ ETA: ~<span id="liveEtaMins">{{ order.target_duration_mins or 18 }}</span> mins</span>
+          <span style="color: #94A3B8;">&bull;</span>
+          <span>📍 <span id="liveDistKm">{{ "%.2f"|format(order.distance_km or 0.8) }} km</span></span>
+        </div>
+
+        <button type="button" onclick="centerOnCommuter()" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border-radius: 9999px;" title="Center map on delivery partner">
+          🎯 Center
+        </button>
+        <button type="button" id="simToggleBtn" onclick="toggleSimulation()" class="btn btn-primary" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; border-radius: 9999px;">
+          ▶ Auto-Track Movement
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Status Banner -->
+    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <div style="font-size: 0.88rem; color: #334155;">
+        {% if order.status == 'Paid_Pending_Commuter' %}
+          <strong>🔍 Matching Order:</strong> Broadcasted to student commuters travelling near {{ order.shop_name or 'the store' }}...
+        {% elif order.status == 'Accepted_By_Commuter' %}
+          <strong>🚴 Commuter Assigned:</strong> <strong>{{ order.commuter_name or 'Student Commuter' }}</strong> is heading to {{ order.shop_name or 'the shop' }}.
+        {% elif order.status == 'Picked_Up_From_Shop' %}
+          <strong>🛵 Out for Delivery:</strong> <strong>{{ order.commuter_name or 'Student Commuter' }}</strong> collected your parcel and is heading to {{ order.delivery_address }}!
+        {% elif order.status == 'Completed' %}
+          <strong>🎉 Delivered!</strong> Handover completed successfully using verified OTP.
+        {% else %}
+          <strong>📦 Status:</strong> {{ order.status.replace('_', ' ') }}
+        {% endif %}
+      </div>
+      <div style="font-size: 0.78rem; color: #64748B;">
+        <span id="speedIndicator">🚀 Commute Speed: ~16 km/h</span>
+      </div>
+    </div>
+
+    <!-- Free Interactive Leaflet Map Container -->
+    <div id="liveDeliveryMap" style="height: 330px; width: 100%; border-radius: 10px; border: 1px solid #CBD5E1; z-index: 1;"></div>
+
+    <!-- Map Route Legend -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; font-size: 0.78rem; color: #64748B; flex-wrap: wrap; gap: 0.5rem;">
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <span>🏪 <strong>Pickup:</strong> {{ order.shop_name or 'Store' }}</span>
+        <span>📍 <strong>Destination:</strong> {{ order.delivery_address }}</span>
+        <span>🛵 <strong>Commuter:</strong> {{ order.commuter_name or 'Peer Member' }}</span>
+      </div>
+      <div>
+        <button type="button" onclick="useRealGps()" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 6px;">
+          📡 Use Real Mobile GPS
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- STAGE 1: SHOP PICKUP & SHOPKEEPER SETTLEMENT -->
   <div class="card" style="padding: 1.75rem; margin-bottom: 2rem; border-left: 6px solid {% if order.shop_payment_status == 'Released_To_Shop' %}var(--primary){% else %}var(--accent){% endif %};">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -475,6 +611,227 @@
     }
     playTone(330, 260, 0.25); // Disconnect chime
     document.getElementById('liveCallModal').classList.remove('active');
+  }
+</script>
+
+<!-- LEAFLET.JS FREE SCRIPT & REAL-TIME GPS RADAR ENGINE -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+  // =========================================================================
+  // 🗺️ ZOMATO-STYLE REAL-TIME LEAFLET MAP TRACKING ENGINE (100% FREE & OPEN)
+  // =========================================================================
+  const ORDER_STATUS = "{{ order.status }}";
+  const BASE_DISTANCE_KM = parseFloat("{{ order.distance_km or 0.8 }}");
+  const TARGET_SLA_MINS = parseInt("{{ order.target_duration_mins or 18 }}");
+
+  // Realistic Campus Route Waypoints (Store -> Campus Junctions -> Hostel/Room)
+  const routeWaypoints = [
+    [18.5228, 73.8538], // 0. Store Pickup Location (Student Plaza)
+    [18.5221, 73.8547], // 1. Campus North Gate Cross
+    [18.5213, 73.8556], // 2. Central Library Circle
+    [18.5205, 73.8569], // 3. Academic Block Quadrangle
+    [18.5197, 73.8580], // 4. Student Activity & Cafeteria Hub
+    [18.5189, 73.8593], // 5. Engineering Labs Pathway
+    [18.5183, 73.8603], // 6. Hostel Circle Roundabout
+    [18.5178, 73.8612]  // 7. Customer Delivery Destination
+  ];
+
+  let currentStep = 0;
+  let isSimulating = false;
+  let simInterval = null;
+
+  // Set initial position based on real database order status
+  if (ORDER_STATUS === 'Completed') {
+    currentStep = routeWaypoints.length - 1;
+  } else if (ORDER_STATUS === 'Picked_Up_From_Shop') {
+    currentStep = 3; // En route to customer
+  } else if (ORDER_STATUS === 'Accepted_By_Commuter') {
+    currentStep = 1; // Heading to shop
+  } else {
+    currentStep = 0; // At shop
+  }
+
+  // Initialize Map
+  const mapCenter = [18.5203, 73.8575];
+  const map = L.map('liveDeliveryMap', {
+    zoomControl: true,
+    scrollWheelZoom: false
+  }).setView(mapCenter, 16);
+
+  // Free OpenStreetMap Tile Layer (No API Key or Billing required)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors | Pick4Me Campus Radar'
+  }).addTo(map);
+
+  // Custom SVG Markers
+  const shopPinIcon = L.divIcon({
+    className: '',
+    html: '<div class="shop-marker-pin" title="Store">🏪</div>',
+    iconSize: [38, 38],
+    iconAnchor: [19, 19]
+  });
+
+  const destPinIcon = L.divIcon({
+    className: '',
+    html: '<div class="dest-marker-pin" title="Destination">🏠</div>',
+    iconSize: [38, 38],
+    iconAnchor: [19, 19]
+  });
+
+  const commuterPinIcon = L.divIcon({
+    className: '',
+    html: '<div class="commuter-marker-pin" title="Delivery Partner">🛵</div>',
+    iconSize: [44, 44],
+    iconAnchor: [22, 22]
+  });
+
+  // Add Shop Marker
+  const shopMarker = L.marker(routeWaypoints[0], { icon: shopPinIcon }).addTo(map);
+  shopMarker.bindPopup(`
+    <div style="font-size: 0.88rem;">
+      <strong style="color: #065F46;">🏪 Pickup Store</strong><br>
+      <strong>{{ order.shop_name or 'Campus Store' }}</strong><br>
+      <span style="color: #64748B;">{{ order.shop_address or 'Student Plaza' }}</span>
+    </div>
+  `);
+
+  // Add Destination Marker
+  const destMarker = L.marker(routeWaypoints[routeWaypoints.length - 1], { icon: destPinIcon }).addTo(map);
+  destMarker.bindPopup(`
+    <div style="font-size: 0.88rem;">
+      <strong style="color: #1E40AF;">📍 Delivery Destination</strong><br>
+      <strong>{{ order.delivery_address }}</strong><br>
+      <span style="color: #64748B;">Customer: {{ order.customer_name }}</span>
+    </div>
+  `);
+
+  // Full Route Line (Blue Dashed)
+  const fullRouteLine = L.polyline(routeWaypoints, {
+    color: '#3B82F6',
+    weight: 5,
+    opacity: 0.6,
+    dashArray: '8, 10'
+  }).addTo(map);
+
+  // Completed Travel Path Line (Green Solid)
+  const completedRouteLine = L.polyline(routeWaypoints.slice(0, currentStep + 1), {
+    color: '#10B981',
+    weight: 6,
+    opacity: 0.9
+  }).addTo(map);
+
+  // Commuter Marker
+  const commuterMarker = L.marker(routeWaypoints[currentStep], {
+    icon: commuterPinIcon,
+    zIndexOffset: 1000
+  }).addTo(map);
+
+  commuterMarker.bindPopup(`
+    <div style="font-size: 0.88rem; text-align: center;">
+      <strong style="color: #10B981;">🛵 Live Delivery Partner</strong><br>
+      <strong>{{ order.commuter_name or 'Student Commuter' }}</strong><br>
+      <span style="font-size: 0.75rem; color: #64748B;">Zomato-Style Live GPS</span>
+    </div>
+  `);
+
+  // Fit bounds to display both pickup and drop
+  map.fitBounds(fullRouteLine.getBounds(), { padding: [40, 40] });
+
+  // Update ETA and Distance badges
+  function updateTelemetry() {
+    const fraction = currentStep / (routeWaypoints.length - 1);
+    const remainingKm = Math.max(0, BASE_DISTANCE_KM * (1 - fraction)).toFixed(2);
+    const remainingMins = Math.max(1, Math.round(TARGET_SLA_MINS * (1 - fraction)));
+
+    const distEl = document.getElementById('liveDistKm');
+    const etaEl = document.getElementById('liveEtaMins');
+    const speedEl = document.getElementById('speedIndicator');
+
+    if (distEl) distEl.innerText = remainingKm + ' km';
+    if (etaEl) etaEl.innerText = remainingMins;
+
+    if (currentStep >= routeWaypoints.length - 1) {
+      if (distEl) distEl.innerText = '0.00 km (Arrived)';
+      if (etaEl) etaEl.innerText = '0';
+      if (speedEl) speedEl.innerText = '🎉 At Doorstep Handover Location';
+    } else {
+      const speeds = [14, 16, 18, 15, 17, 19];
+      const randomSpeed = speeds[currentStep % speeds.length];
+      if (speedEl) speedEl.innerText = `🚀 Commute Speed: ~${randomSpeed} km/h (Active GPS)`;
+    }
+  }
+  updateTelemetry();
+
+  // Center on commuter button
+  function centerOnCommuter() {
+    map.panTo(commuterMarker.getLatLng(), { animate: true, duration: 1 });
+    commuterMarker.openPopup();
+  }
+
+  // Zomato Live Movement Simulation (For presentation / viva demo!)
+  function toggleSimulation() {
+    const btn = document.getElementById('simToggleBtn');
+    if (isSimulating) {
+      clearInterval(simInterval);
+      simInterval = null;
+      isSimulating = false;
+      if (btn) btn.innerText = '▶ Auto-Track Movement';
+    } else {
+      isSimulating = true;
+      if (btn) btn.innerText = '⏸ Pause Tracking';
+      
+      // If already at end, reset to start for re-demonstration
+      if (currentStep >= routeWaypoints.length - 1) {
+        currentStep = 0;
+      }
+
+      simInterval = setInterval(() => {
+        if (currentStep < routeWaypoints.length - 1) {
+          currentStep++;
+          const nextCoord = routeWaypoints[currentStep];
+          commuterMarker.setLatLng(nextCoord);
+          completedRouteLine.setLatLngs(routeWaypoints.slice(0, currentStep + 1));
+          updateTelemetry();
+        } else {
+          // Reached destination!
+          clearInterval(simInterval);
+          simInterval = null;
+          isSimulating = false;
+          if (btn) btn.innerText = '↺ Replay Live Tracking';
+          commuterMarker.bindPopup(`
+            <div style="font-size: 0.9rem; text-align: center; color: #065F46;">
+              🎉 <strong>Parcel Arrived at Destination!</strong><br>
+              <small>Share private 4-digit OTP to complete handover.</small>
+            </div>
+          `).openPopup();
+        }
+      }, 2000);
+    }
+  }
+
+  // HTML5 Mobile Geolocation API (Streams actual real-life GPS if commuter moves outdoors!)
+  function useRealGps() {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    alert("📡 Tracking your actual mobile GPS. Your live coordinates will now appear on the radar!");
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        const liveLat = pos.coords.latitude;
+        const liveLng = pos.coords.longitude;
+        const realCoords = [liveLat, liveLng];
+        commuterMarker.setLatLng(realCoords);
+        map.panTo(realCoords);
+        const speedKmh = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : 15;
+        document.getElementById('speedIndicator').innerText = `📡 Phone GPS Active: ${speedKmh} km/h`;
+      },
+      (err) => {
+        console.warn("GPS Notice:", err.message);
+      },
+      { enableHighAccuracy: true, maximumAge: 1000 }
+    );
   }
 </script>
 {% endblock %}
