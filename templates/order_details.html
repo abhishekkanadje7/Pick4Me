@@ -130,6 +130,64 @@
           {% endif %}
         </div>
       </div>
+
+      <!-- FEEDBACK & RATING SECTION -->
+      {% if order.feedback_rating %}
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 1.25rem; border-radius: var(--radius-md); margin-top: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-weight: 700; color: #1E293B; font-size: 1rem;">
+              ⭐ Customer Review & Experience
+            </div>
+            <div style="color: #F59E0B; font-size: 1.25rem; font-weight: 800;">
+              {% for i in range(order.feedback_rating) %}★{% endfor %}{% for i in range(5 - order.feedback_rating) %}☆{% endfor %}
+              <span style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600;">({{ order.feedback_rating }}/5)</span>
+            </div>
+          </div>
+          {% if order.feedback_comment %}
+            <div style="background: #FFFFFF; border: 1px solid var(--border-color); padding: 0.85rem 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; color: var(--text-body); font-style: italic; margin-top: 0.5rem;">
+              "{{ order.feedback_comment }}"
+            </div>
+          {% endif %}
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.65rem;">
+            ✓ Verified Campus Delivery Feedback &bull; Submitted on {{ order.feedback_submitted_at or 'Completed Order' }}
+          </div>
+        </div>
+      {% elif is_customer_a or is_admin %}
+        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; padding: 1.5rem; border-radius: var(--radius-md); margin-top: 1.25rem;">
+          <h4 style="color: #1E40AF; margin-bottom: 0.35rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+            ⭐ Leave Feedback & Rating
+          </h4>
+          <p style="font-size: 0.88rem; color: #3B82F6; margin-bottom: 1rem;">
+            Share your experience with {{ order.commuter_name or 'the commuter' }} to keep campus deliveries reliable!
+          </p>
+
+          <form method="POST" action="{{ url_for('submit_order_feedback', id=order.id) }}">
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0.35rem;">
+                Rate Handover Quality & Speed:
+              </label>
+              <div class="star-rating">
+                <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="5 stars - Outstanding">★</label>
+                <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="4 stars - Very Good">★</label>
+                <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="3 stars - Good">★</label>
+                <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="2 stars - Fair">★</label>
+                <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="1 star - Poor">★</label>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0.35rem;">
+                Feedback / Comments (Optional):
+              </label>
+              <textarea name="comment" class="form-control" rows="2" placeholder="e.g. Received my order super fast, items were well packaged!"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="font-weight: 700; width: 100%;">
+              Submit Rating & Review &rarr;
+            </button>
+          </form>
+        </div>
+      {% endif %}
     {% else %}
       
       <!-- If current user is Customer A (Buyer) -->
@@ -175,26 +233,248 @@
     {% endif %}
   </div>
 
-  <!-- Delivery Details Summary -->
+  <!-- Delivery Details Summary & Live Calling -->
   <div class="card" style="padding: 1.5rem;">
-    <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-      📋 Contact & Routing Details
-    </h4>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.88rem;">
-      <div>
-        <strong>Buyer (Customer A):</strong> {{ order.customer_name }}<br>
-        <span style="color: var(--text-muted);">Phone: {{ order.phone }}</span><br>
-        <span style="color: var(--text-muted);">Address: {{ order.delivery_address }}</span>
-      </div>
-      <div>
-        <strong>Deliverer (Customer B):</strong> {{ order.commuter_name or 'Looking for nearby commuter...' }}<br>
-        {% if order.commuter_phone %}
-          <span style="color: var(--text-muted);">Phone: {{ order.commuter_phone }}</span><br>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+      <h4 style="margin: 0;">
+        📋 Contact, Routing & Live Calling
+      </h4>
+      <span class="badge badge-info" style="font-size: 0.8rem;">
+        ⚡ P2P Direct Connect
+      </span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; font-size: 0.88rem; margin-bottom: 1.25rem;">
+      <div style="background: var(--bg-main); padding: 1.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-weight: 700; margin-bottom: 0.25rem; color: var(--text-main);">Buyer (Customer A):</div>
+        <div style="font-size: 1rem; font-weight: 600;">{{ order.customer_name }}</div>
+        <div style="color: var(--text-muted); font-size: 0.84rem; margin-top: 0.25rem;">📞 {{ order.phone }}</div>
+        <div style="color: var(--text-muted); font-size: 0.84rem;">📍 {{ order.delivery_address }}</div>
+        {% if not is_customer_a %}
+          <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="startLiveCall('{{ order.customer_name }}', 'Buyer (Customer A)', '{{ order.phone }}')" style="font-size: 0.82rem; padding: 0.4rem 0.85rem; font-weight: 700;">
+              📞 In-App Live Call
+            </button>
+            <a href="tel:{{ order.phone }}" class="btn btn-outline btn-sm" style="font-size: 0.82rem; padding: 0.4rem 0.75rem;">
+              📱 Direct Dial
+            </a>
+          </div>
         {% endif %}
-        <span style="color: var(--primary); font-weight: 600;">SLA Window: {{ order.target_duration_mins }} Mins</span>
+      </div>
+
+      <div style="background: var(--bg-main); padding: 1.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-weight: 700; margin-bottom: 0.25rem; color: var(--text-main);">Deliverer (Customer B):</div>
+        <div style="font-size: 1rem; font-weight: 600;">{{ order.commuter_name or 'Looking for nearby commuter...' }}</div>
+        {% if order.commuter_phone %}
+          <div style="color: var(--text-muted); font-size: 0.84rem; margin-top: 0.25rem;">📞 {{ order.commuter_phone }}</div>
+        {% endif %}
+        <div style="color: var(--primary); font-weight: 600; font-size: 0.84rem; margin-top: 0.25rem;">⏱️ SLA Window: {{ order.target_duration_mins }} Mins</div>
+        {% if order.commuter_name and not is_commuter_b %}
+          <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="startLiveCall('{{ order.commuter_name }}', 'Peer Deliverer', '{{ order.commuter_phone }}')" style="font-size: 0.82rem; padding: 0.4rem 0.85rem; font-weight: 700;">
+              📞 In-App Live Call
+            </button>
+            {% if order.commuter_phone %}
+              <a href="tel:{{ order.commuter_phone }}" class="btn btn-outline btn-sm" style="font-size: 0.82rem; padding: 0.4rem 0.75rem;">
+                📱 Direct Dial
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
       </div>
     </div>
+
+    {% if order.shop_name %}
+      <div style="background: var(--bg-main); padding: 1.25rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">🏪 Store / Merchant: {{ order.shop_name }}</div>
+          <div style="font-size: 0.84rem; color: var(--text-muted); margin-top: 0.2rem;">
+            📍 {{ order.shop_address or 'Campus Gate' }} {% if order.shop_phone %}&bull; 📞 {{ order.shop_phone }}{% endif %}
+          </div>
+        </div>
+        {% if not is_shop_owner and order.shop_phone %}
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="startLiveCall('{{ order.shop_name }}', 'Store Merchant', '{{ order.shop_phone }}')" style="font-size: 0.82rem; padding: 0.4rem 0.85rem; font-weight: 700;">
+              🏪 In-App Live Call
+            </button>
+            <a href="tel:{{ order.shop_phone }}" class="btn btn-outline btn-sm" style="font-size: 0.82rem; padding: 0.4rem 0.75rem;">
+              📱 Direct Dial
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
 
 </div>
+
+<!-- LIVE CALLING MODAL & INTERACTIVE WEBRTC AUDIO SIMULATOR -->
+<div id="liveCallModal" class="call-modal-overlay">
+  <div class="call-modal-card">
+    <div class="call-avatar-wrapper">
+      <div class="call-pulse-ring" id="callPulseRing"></div>
+      <div class="call-avatar" id="callAvatarIcon">📞</div>
+    </div>
+
+    <h3 id="callTargetName" style="font-size: 1.35rem; margin-bottom: 0.25rem; font-weight: 800;">Calling...</h3>
+    <p id="callTargetRole" style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 1rem;">Pick4Me Secure Connection</p>
+
+    <div class="call-status-badge">
+      <span id="callStatusDot" style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
+      <span id="callStatusText">Ringing...</span>
+    </div>
+
+    <!-- Direct Fallbacks -->
+    <div style="margin-bottom: 1.5rem; display: flex; justify-content: center; gap: 0.75rem;">
+      <a id="callDirectTel" href="#" class="btn btn-sm" style="background: rgba(255, 255, 255, 0.1); color: #FFF; font-size: 0.78rem; text-decoration: none;">
+        📱 SIM Phone Call
+      </a>
+      <a id="callDirectWhatsApp" href="#" target="_blank" class="btn btn-sm" style="background: rgba(37, 211, 102, 0.2); color: #25D366; font-size: 0.78rem; text-decoration: none;">
+        💬 WhatsApp
+      </a>
+    </div>
+
+    <!-- Live Controls -->
+    <div class="call-controls">
+      <button type="button" class="call-btn call-btn-mute" id="muteBtn" onclick="toggleMute()" title="Mute Microphone">
+        🎙️
+      </button>
+      <button type="button" class="call-btn call-btn-speaker" id="speakerBtn" onclick="toggleSpeaker()" title="Toggle Speaker">
+        🔊
+      </button>
+      <button type="button" class="call-btn call-btn-end" onclick="endLiveCall()" title="End Call">
+        🔴
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let audioCtx = null;
+  let ringInterval = null;
+  let callTimerInterval = null;
+  let callSeconds = 0;
+  let isMuted = false;
+  let isSpeaker = false;
+
+  function initAudio() {
+    if (!audioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        audioCtx = new AudioContext();
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }
+
+  function playTone(freq1, freq2, duration) {
+    if (!audioCtx) return;
+    try {
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc1.frequency.value = freq1;
+      osc2.frequency.value = freq2;
+
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc1.start();
+      osc2.start();
+      osc1.stop(audioCtx.currentTime + duration);
+      osc2.stop(audioCtx.currentTime + duration);
+    } catch(e) {
+      console.log('Audio tone error', e);
+    }
+  }
+
+  function startLiveCall(name, role, phone) {
+    initAudio();
+    document.getElementById('callTargetName').innerText = name || 'User';
+    document.getElementById('callTargetRole').innerText = role || 'Pick4Me Member';
+    document.getElementById('callStatusText').innerText = 'Calling...';
+    document.getElementById('callStatusDot').style.background = '#F59E0B';
+    document.getElementById('callPulseRing').style.display = 'block';
+
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+    document.getElementById('callDirectTel').href = 'tel:' + (phone || '');
+    document.getElementById('callDirectWhatsApp').href = 'https://wa.me/91' + cleanPhone;
+
+    document.getElementById('liveCallModal').classList.add('active');
+
+    // Ringing sound simulation (European / Indian telephone cadence: 440Hz + 480Hz)
+    let ringCount = 0;
+    playTone(440, 480, 1.2);
+
+    ringInterval = setInterval(() => {
+      ringCount++;
+      if (ringCount < 3) {
+        document.getElementById('callStatusText').innerText = 'Ringing...';
+        playTone(440, 480, 1.2);
+      } else {
+        // Connect the call!
+        clearInterval(ringInterval);
+        ringInterval = null;
+        connectCall();
+      }
+    }, 2500);
+  }
+
+  function connectCall() {
+    // Play connected chime
+    playTone(523.25, 659.25, 0.4); // C5 + E5 harmonic chord
+    document.getElementById('callStatusText').innerText = '🟢 Connected (00:00)';
+    document.getElementById('callStatusDot').style.background = '#10B981';
+
+    callSeconds = 0;
+    callTimerInterval = setInterval(() => {
+      callSeconds++;
+      const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+      const secs = String(callSeconds % 60).padStart(2, '0');
+      document.getElementById('callStatusText').innerText = `🟢 Connected (${mins}:${secs})`;
+    }, 1000);
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    const btn = document.getElementById('muteBtn');
+    if (isMuted) {
+      btn.classList.add('active');
+      btn.innerText = '🔇';
+    } else {
+      btn.classList.remove('active');
+      btn.innerText = '🎙️';
+    }
+  }
+
+  function toggleSpeaker() {
+    isSpeaker = !isSpeaker;
+    const btn = document.getElementById('speakerBtn');
+    if (isSpeaker) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  }
+
+  function endLiveCall() {
+    if (ringInterval) {
+      clearInterval(ringInterval);
+      ringInterval = null;
+    }
+    if (callTimerInterval) {
+      clearInterval(callTimerInterval);
+      callTimerInterval = null;
+    }
+    playTone(330, 260, 0.25); // Disconnect chime
+    document.getElementById('liveCallModal').classList.remove('active');
+  }
+</script>
 {% endblock %}

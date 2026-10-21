@@ -867,6 +867,48 @@ def order_details(id):
         current_user_id=user_id
     )
 
+@app.route('/orders/<int:id>/feedback', methods=['POST'])
+@login_required
+def submit_order_feedback(id):
+    user_id = session['user_id']
+    rating = request.form.get('rating', type=int)
+    comment = request.form.get('comment', '').strip()
+
+    if not rating or rating < 1 or rating > 5:
+        flash('Please select a star rating between 1 and 5.', 'warning')
+        return redirect(url_for('order_details', id=id))
+
+    conn = get_db_connection()
+    order = conn.execute('SELECT * FROM orders WHERE id = ?', (id,)).fetchone()
+
+    if not order:
+        conn.close()
+        abort(404)
+
+    is_customer_a = (order['customer_id'] == user_id)
+    is_admin = (session.get('user_role') == 'admin')
+
+    if not (is_customer_a or is_admin):
+        conn.close()
+        flash('Only the customer who placed this order can submit feedback.', 'danger')
+        return redirect(url_for('order_details', id=id))
+
+    if order['status'] != 'Completed':
+        conn.close()
+        flash('Feedback can only be submitted after the delivery is completed.', 'warning')
+        return redirect(url_for('order_details', id=id))
+
+    conn.execute('''
+        UPDATE orders
+        SET feedback_rating = ?, feedback_comment = ?, feedback_submitted_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (rating, comment, id))
+    conn.commit()
+    conn.close()
+
+    flash('🎉 Thank you! Your feedback and rating have been recorded successfully.', 'success')
+    return redirect(url_for('order_details', id=id))
+
 # ==========================================
 # SHOPPER / STORE MERCHANT DASHBOARD
 # ==========================================

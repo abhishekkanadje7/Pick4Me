@@ -5,7 +5,11 @@ import re
 from werkzeug.security import generate_password_hash
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
-DATABASE_NAME = os.environ.get('DATABASE_PATH', os.path.join(os.path.dirname(__file__), 'pick4me.db'))
+if os.environ.get('VERCEL'):
+    DEFAULT_DB = '/tmp/pick4me.db'
+else:
+    DEFAULT_DB = os.path.join(os.path.dirname(__file__), 'pick4me.db')
+DATABASE_NAME = os.environ.get('DATABASE_PATH', DEFAULT_DB)
 
 # Optional PostgreSQL support via psycopg2
 try:
@@ -225,6 +229,9 @@ def init_db():
             phone TEXT NOT NULL,
             instructions TEXT DEFAULT '',
             status TEXT NOT NULL DEFAULT 'Paid_Pending_Commuter',
+            feedback_rating INTEGER DEFAULT NULL,
+            feedback_comment TEXT DEFAULT '',
+            feedback_submitted_at TIMESTAMP DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES users (id),
@@ -232,6 +239,15 @@ def init_db():
             FOREIGN KEY (shop_id) REFERENCES shops (id)
         )
     '''))
+
+    # Safe schema migration for feedback columns if table already exists
+    for col, col_type in [('feedback_rating', 'INTEGER DEFAULT NULL'),
+                          ('feedback_comment', "TEXT DEFAULT ''"),
+                          ('feedback_submitted_at', 'TIMESTAMP DEFAULT NULL')]:
+        try:
+            cursor.execute(f"ALTER TABLE orders ADD COLUMN {col} {col_type}")
+        except sqlite3.OperationalError:
+            pass
 
     # 6. Wallet Transactions Table
     cursor.execute(adapt_schema('''
