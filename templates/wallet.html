@@ -68,7 +68,7 @@
           {% for tx in transactions %}
             <tr>
               <td>#TXN-{{ tx.id }}</td>
-              <td style="font-size: 0.85rem; color: var(--text-muted);">{{ tx.created_at[:16] }}</td>
+              <td style="font-size: 0.85rem; color: var(--text-muted);">{{ tx.created_at|format_dt }}</td>
               <td><strong>{{ tx.description }}</strong></td>
               <td><span class="badge badge-customer">{{ tx.type }}</span></td>
               <td style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">

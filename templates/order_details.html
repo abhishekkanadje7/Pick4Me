@@ -23,7 +23,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.25rem;">
       <div>
         <h3 style="margin: 0; font-size: 1.2rem;">{{ order.items_summary }}</h3>
-        <span style="font-size: 0.82rem; color: var(--text-muted);">Placed on {{ order.created_at[:16] }}</span>
+        <span style="font-size: 0.82rem; color: var(--text-muted);">Placed on {{ order.created_at|format_dt }}</span>
       </div>
       <div style="text-align: right;">
         <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); font-family: var(--font-mono);">

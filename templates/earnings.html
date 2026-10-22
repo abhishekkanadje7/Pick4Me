@@ -84,7 +84,7 @@
               </td>
               <td>{{ item.customer_name }}</td>
               <td style="font-size: 0.85rem; color: var(--text-muted);">
-                {{ item.updated_at[:16] if item.updated_at else item.created_at[:16] }}
+                {{ (item.updated_at or item.created_at)|format_dt }}
               </td>
               <td>
                 <span style="font-weight: 800; color: var(--primary); font-size: 1.05rem;">

@@ -163,6 +163,17 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+@app.template_filter('format_dt')
+def format_datetime(val, length=16):
+    if not val:
+        return ''
+    if hasattr(val, 'strftime'):
+        if length == 10:
+            return val.strftime('%Y-%m-%d')
+        return val.strftime('%Y-%m-%d %H:%M')
+    s = str(val)
+    return s[:length] if len(s) >= length else s
+
 @app.context_processor
 def inject_globals():
     user = None

@@ -106,7 +106,7 @@
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-light); margin-bottom: 1rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
             <span>Est. Item Price: ₹{{ "%.2f"|format(req.estimated_price) }}</span>
-            <span>{{ req.created_at[:16] }}</span>
+            <span>{{ req.created_at|format_dt }}</span>
           </div>
 
           <div style="display: flex; gap: 0.5rem;">

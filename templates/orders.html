@@ -66,7 +66,7 @@
                 <div style="font-size: 0.8rem; color: var(--text-muted);">{{ order.counterpart_phone or '' }}</div>
               </td>
               <td style="font-size: 0.85rem; color: var(--text-muted);">
-                {{ order.updated_at[:16] if order.updated_at else order.created_at[:16] }}
+                {{ (order.updated_at or order.created_at)|format_dt }}
               </td>
               <td>
                 {% if role == 'shopper' %}

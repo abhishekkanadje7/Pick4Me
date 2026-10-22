@@ -19,7 +19,7 @@
       <div>
         <h3 style="margin: 0 0 0.2rem;">{{ user.name }}</h3>
         <span class="badge badge-{{ user.role }}">{{ user.role|upper }}</span>
-        <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;">Joined {{ user.created_at[:10] }}</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;">Joined {{ user.created_at|format_dt(10) }}</span>
       </div>
     </div>
 
