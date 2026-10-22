@@ -380,11 +380,15 @@ def view_cart():
     )
 
 @app.route('/cart/add', methods=['POST'])
+@app.route('/cart/add/<int:product_id>', methods=['GET', 'POST'])
 @customer_required
-def add_to_cart():
+def add_to_cart(product_id=None):
     user_id = session['user_id']
-    product_id = request.form.get('product_id', type=int)
-    quantity = request.form.get('quantity', 1, type=int)
+    if product_id is None:
+        product_id = request.form.get('product_id', type=int)
+    quantity = request.form.get('quantity', 1, type=int) if request.form else 1
+    if not quantity or quantity < 1:
+        quantity = 1
 
     if not product_id:
         flash('Invalid product selected.', 'danger')
@@ -1705,6 +1709,13 @@ def internal_server_error(e):
     traceback.print_exc()
     error_msg = str(getattr(e, 'original_exception', e))
     return render_template('404.html', error_code=500, error_message=f"Internal Server Error: {error_msg}"), 500
+
+# Backwards-compatible legacy route aliases
+app.add_url_rule('/deliveries', endpoint='available_requests', view_func=available_deliveries_board)
+app.add_url_rule('/orders', endpoint='available_orders', view_func=orders_list)
+app.add_url_rule('/requests/create', endpoint='create_request', view_func=create_custom_request, methods=['GET', 'POST'])
+app.add_url_rule('/orders/<int:id>', endpoint='request_details', view_func=order_details)
+app.add_url_rule('/deliveries/claim/<int:id>', endpoint='accept_request', view_func=claim_delivery_task, methods=['POST'])
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
