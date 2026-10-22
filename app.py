@@ -445,53 +445,76 @@ def checkout_cart():
         return redirect(url_for('view_cart'))
 
     conn = get_db_connection()
-    items = conn.execute('''
-        SELECT c.*, p.name as product_name, p.price, s.id as shop_id, s.shop_name
-        FROM cart_items c
-        JOIN products p ON c.product_id = p.id
-        JOIN shops s ON p.shop_id = s.id
-        WHERE c.user_id = ?
-    ''', (user_id,)).fetchall()
+    try:
+        items = conn.execute('''
+            SELECT c.*, p.name as product_name, p.price, s.id as shop_id, s.shop_name
+            FROM cart_items c
+            JOIN products p ON c.product_id = p.id
+            JOIN shops s ON p.shop_id = s.id
+            WHERE c.user_id = ?
+        ''', (user_id,)).fetchall()
 
-    if not items:
+        if not items:
+            conn.close()
+            flash('Your cart is empty.', 'warning')
+            return redirect(url_for('products_catalog'))
+
+        subtotal = sum(item['price'] * item['quantity'] for item in items)
+        delivery_fee, distance_km, target_sla_mins = calculate_delivery_reward(distance_tier, bool(is_urgent))
+        total_amount = subtotal + delivery_fee
+        
+        items_list_str = ", ".join([f"{item['product_name']} (x{item['quantity']})" for item in items])
+        shop_id = items[0]['shop_id']
+        
+        # Generate 2 distinct secure OTPs: One for Shop Pickup, One for Customer Final Handover
+        pickup_otp = generate_otp()
+        delivery_otp = generate_otp()
+
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO orders (
+                order_type, customer_id, shop_id, items_summary,
+                product_amount, delivery_fee, total_amount,
+                distance_tier, distance_km, is_urgent, target_duration_mins,
+                payment_status, shop_payment_status, delivery_payment_status,
+                pickup_otp, delivery_otp, delivery_address, phone, instructions, status
+            ) VALUES ('shop_order', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Payment', 'Pending', 'Pending', ?, ?, ?, ?, ?, 'Pending_Payment')
+        ''', (
+            user_id, shop_id, items_list_str,
+            subtotal, delivery_fee, total_amount,
+            distance_tier, distance_km, is_urgent, target_sla_mins,
+            pickup_otp, delivery_otp, delivery_address, phone, instructions
+        ))
+        
+        order_id = cursor.lastrowid
+        if not order_id:
+            row = conn.execute("SELECT id FROM orders WHERE customer_id = ? ORDER BY id DESC LIMIT 1", (user_id,)).fetchone()
+            order_id = row['id'] if hasattr(row, 'keys') else row[0] if row else None
+
+        cursor.execute('DELETE FROM cart_items WHERE user_id = ?', (user_id,))
+        conn.commit()
         conn.close()
-        flash('Your cart is empty.', 'warning')
-        return redirect(url_for('products_catalog'))
 
-    subtotal = sum(item['price'] * item['quantity'] for item in items)
-    delivery_fee, distance_km, target_sla_mins = calculate_delivery_reward(distance_tier, bool(is_urgent))
-    total_amount = subtotal + delivery_fee
-    
-    items_list_str = ", ".join([f"{item['product_name']} (x{item['quantity']})" for item in items])
-    shop_id = items[0]['shop_id']
-    
-    # Generate 2 distinct secure OTPs: One for Shop Pickup, One for Customer Final Handover
-    pickup_otp = generate_otp()
-    delivery_otp = generate_otp()
+        if not order_id:
+            flash('Order placed! Please check your orders page.', 'info')
+            return redirect(url_for('orders_list'))
 
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO orders (
-            order_type, customer_id, shop_id, items_summary,
-            product_amount, delivery_fee, total_amount,
-            distance_tier, distance_km, is_urgent, target_duration_mins,
-            payment_status, shop_payment_status, delivery_payment_status,
-            pickup_otp, delivery_otp, delivery_address, phone, instructions, status
-        ) VALUES ('shop_order', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Payment', 'Pending', 'Pending', ?, ?, ?, ?, ?, 'Pending_Payment')
-    ''', (
-        user_id, shop_id, items_list_str,
-        subtotal, delivery_fee, total_amount,
-        distance_tier, distance_km, is_urgent, target_sla_mins,
-        pickup_otp, delivery_otp, delivery_address, phone, instructions
-    ))
-    order_id = cursor.lastrowid
+        flash('Order created! Please complete advance payment to Admin Escrow.', 'info')
+        return redirect(url_for('advance_payment_page', order_id=order_id))
 
-    cursor.execute('DELETE FROM cart_items WHERE user_id = ?', (user_id,))
-    conn.commit()
-    conn.close()
-
-    flash('Order created! Please complete advance payment to Admin Escrow.', 'info')
-    return redirect(url_for('advance_payment_page', order_id=order_id))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+        flash(f'⚠️ Order placement could not be completed: {str(e)}', 'danger')
+        return redirect(url_for('view_cart'))
 
 # ==========================================
 # CUSTOM PEER ERRANDS (CUSTOMER A)
@@ -530,27 +553,50 @@ def create_custom_request():
         items_summary = f"{product_name} (from {shop_name})"
 
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO orders (
-                order_type, customer_id, items_summary,
-                product_amount, delivery_fee, total_amount,
-                distance_tier, distance_km, is_urgent, target_duration_mins,
-                payment_status, shop_payment_status, delivery_payment_status,
-                pickup_otp, delivery_otp, delivery_address, phone, instructions, status
-            ) VALUES ('custom_request', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Payment', 'Pending', 'Pending', ?, ?, ?, ?, ?, 'Pending_Payment')
-        ''', (
-            customer_id, items_summary,
-            estimated_price, delivery_fee, total_amount,
-            distance_tier, distance_km, is_urgent, target_sla_mins,
-            pickup_otp, delivery_otp, delivery_address, phone, instructions
-        ))
-        order_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO orders (
+                    order_type, customer_id, items_summary,
+                    product_amount, delivery_fee, total_amount,
+                    distance_tier, distance_km, is_urgent, target_duration_mins,
+                    payment_status, shop_payment_status, delivery_payment_status,
+                    pickup_otp, delivery_otp, delivery_address, phone, instructions, status
+                ) VALUES ('custom_request', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Payment', 'Pending', 'Pending', ?, ?, ?, ?, ?, 'Pending_Payment')
+            ''', (
+                customer_id, items_summary,
+                estimated_price, delivery_fee, total_amount,
+                distance_tier, distance_km, is_urgent, target_sla_mins,
+                pickup_otp, delivery_otp, delivery_address, phone, instructions
+            ))
+            order_id = cursor.lastrowid
+            if not order_id:
+                row = conn.execute("SELECT id FROM orders WHERE customer_id = ? ORDER BY id DESC LIMIT 1", (customer_id,)).fetchone()
+                order_id = row['id'] if hasattr(row, 'keys') else row[0] if row else None
 
-        flash('Custom errand request created! Complete advance payment to Admin Escrow.', 'info')
-        return redirect(url_for('advance_payment_page', order_id=order_id))
+            conn.commit()
+            conn.close()
+
+            if not order_id:
+                flash('Errand request created! Please check your orders.', 'info')
+                return redirect(url_for('orders_list'))
+
+            flash('Custom errand request created! Complete advance payment to Admin Escrow.', 'info')
+            return redirect(url_for('advance_payment_page', order_id=order_id))
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+            flash(f'⚠️ Errand creation error: {str(e)}', 'danger')
+            return render_template('create_request.html', form_data=request.form)
 
     conn = get_db_connection()
     user = conn.execute('SELECT phone, location FROM users WHERE id = ?', (session['user_id'],)).fetchone()
@@ -1620,16 +1666,30 @@ def db_health():
         users_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         shops_count = conn.execute("SELECT COUNT(*) FROM shops").fetchone()[0]
         products_count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+        orders_count = conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
+
+        orders_cols = []
+        if is_pg:
+            res = conn.execute("SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'orders' ORDER BY ordinal_position").fetchall()
+            orders_cols = [f"{r[0]} ({r[1]}, null={r[2]})" for r in res]
+        else:
+            res = conn.execute("PRAGMA table_info(orders)").fetchall()
+            orders_cols = [f"{r[1]} ({r[2]})" for r in res]
+
         conn.close()
         return jsonify({
             'status': 'ok',
             'db_engine': 'PostgreSQL' if is_pg else 'SQLite',
             'users_count': users_count,
             'shops_count': shops_count,
-            'products_count': products_count
+            'products_count': products_count,
+            'orders_count': orders_count,
+            'orders_columns_count': len(orders_cols),
+            'orders_columns': orders_cols
         })
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        import traceback
+        return jsonify({'status': 'error', 'message': str(e), 'trace': traceback.format_exc()}), 500
 
 @app.route('/favicon.ico')
 def favicon():
@@ -1641,7 +1701,10 @@ def page_not_found(e):
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    return render_template('404.html', error_code=500, error_message="Internal Server Error"), 500
+    import traceback
+    traceback.print_exc()
+    error_msg = str(getattr(e, 'original_exception', e))
+    return render_template('404.html', error_code=500, error_message=f"Internal Server Error: {error_msg}"), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))

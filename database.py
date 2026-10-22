@@ -280,29 +280,87 @@ def init_db():
         )
     '''))
 
-    # Safe schema migration for feedback columns if table already exists
-    if is_postgres:
-        for col, col_type in [('feedback_rating', 'INTEGER DEFAULT NULL'),
-                              ('feedback_comment', "TEXT DEFAULT ''"),
-                              ('feedback_submitted_at', 'TIMESTAMP DEFAULT NULL')]:
-            try:
-                cursor.execute(f"ALTER TABLE orders ADD COLUMN IF NOT EXISTS {col} {col_type}")
+    # Safe schema migration for ALL columns across users, shops, products, and orders
+    all_table_migrations = [
+        # Users table migrations
+        ('users', 'upi_id', "TEXT DEFAULT '7387157739@upi'"),
+        ('users', 'qr_code', "TEXT DEFAULT 'upi_qr.png'"),
+        ('users', 'is_verified', "INTEGER DEFAULT 1"),
+        ('users', 'wallet_balance', "REAL DEFAULT 0.0"),
+        ('users', 'id_proof', "TEXT DEFAULT 'Verified Campus Member'"),
+
+        # Shops table migrations
+        ('shops', 'landmark', "TEXT DEFAULT ''"),
+        ('shops', 'description', "TEXT DEFAULT ''"),
+        ('shops', 'image', "TEXT DEFAULT ''"),
+        ('shops', 'is_active', "INTEGER DEFAULT 1"),
+
+        # Products table migrations
+        ('products', 'description', "TEXT DEFAULT ''"),
+        ('products', 'image', "TEXT DEFAULT ''"),
+        ('products', 'in_stock', "INTEGER DEFAULT 1"),
+
+        # Orders table migrations (Ensures all 3-party logistics and escrow columns exist)
+        ('orders', 'order_type', "TEXT DEFAULT 'shop_order'"),
+        ('orders', 'customer_id', "INTEGER"),
+        ('orders', 'commuter_id', "INTEGER DEFAULT NULL"),
+        ('orders', 'shop_id', "INTEGER DEFAULT NULL"),
+        ('orders', 'items_summary', "TEXT DEFAULT 'Campus Delivery'"),
+        ('orders', 'product_amount', "REAL DEFAULT 0.0"),
+        ('orders', 'delivery_fee', "REAL DEFAULT 20.0"),
+        ('orders', 'total_amount', "REAL DEFAULT 20.0"),
+        ('orders', 'distance_tier', "TEXT DEFAULT 'within_campus'"),
+        ('orders', 'distance_km', "REAL DEFAULT 0.8"),
+        ('orders', 'is_urgent', "INTEGER DEFAULT 0"),
+        ('orders', 'target_duration_mins', "INTEGER DEFAULT 30"),
+        ('orders', 'accepted_at', "TIMESTAMP DEFAULT NULL"),
+        ('orders', 'picked_up_at', "TIMESTAMP DEFAULT NULL"),
+        ('orders', 'delivered_at', "TIMESTAMP DEFAULT NULL"),
+        ('orders', 'actual_duration_mins', "INTEGER DEFAULT NULL"),
+        ('orders', 'speed_bonus', "REAL DEFAULT 0.0"),
+        ('orders', 'delay_penalty', "REAL DEFAULT 0.0"),
+        ('orders', 'final_payout', "REAL DEFAULT NULL"),
+        ('orders', 'payment_status', "TEXT DEFAULT 'Pending_Payment'"),
+        ('orders', 'shop_payment_status', "TEXT DEFAULT 'Pending'"),
+        ('orders', 'delivery_payment_status', "TEXT DEFAULT 'Pending'"),
+        ('orders', 'pickup_otp', "TEXT DEFAULT '1234'"),
+        ('orders', 'delivery_otp', "TEXT DEFAULT '5678'"),
+        ('orders', 'delivery_address', "TEXT DEFAULT 'Campus'"),
+        ('orders', 'phone', "TEXT DEFAULT ''"),
+        ('orders', 'instructions', "TEXT DEFAULT ''"),
+        ('orders', 'status', "TEXT DEFAULT 'Paid_Pending_Commuter'"),
+        ('orders', 'feedback_rating', "INTEGER DEFAULT NULL"),
+        ('orders', 'feedback_comment', "TEXT DEFAULT ''"),
+        ('orders', 'feedback_submitted_at', "TIMESTAMP DEFAULT NULL"),
+        ('orders', 'created_at', "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ('orders', 'updated_at', "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    ]
+
+    for table, col, col_type in all_table_migrations:
+        try:
+            if is_postgres:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}")
                 conn.commit()
-            except Exception as e:
-                print(f"[Pick4Me Migration Notice] Column {col} check: {e}")
+            else:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+                conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+    # For PostgreSQL: Drop NOT NULL on legacy columns if they exist from early schemas
+    if is_postgres:
+        for legacy_col in ['request_id', 'shopper_id', 'reward', 'shop_id', 'commuter_id', 'pickup_otp', 'delivery_otp', 'items_summary']:
+            try:
+                cursor.execute(f"ALTER TABLE orders ALTER COLUMN {legacy_col} DROP NOT NULL")
+                conn.commit()
+            except Exception:
                 try:
                     conn.rollback()
                 except Exception:
                     pass
-    else:
-        for col, col_type in [('feedback_rating', 'INTEGER DEFAULT NULL'),
-                              ('feedback_comment', "TEXT DEFAULT ''"),
-                              ('feedback_submitted_at', 'TIMESTAMP DEFAULT NULL')]:
-            try:
-                cursor.execute(f"ALTER TABLE orders ADD COLUMN {col} {col_type}")
-                conn.commit()
-            except Exception:
-                pass
 
     # 6. Wallet Transactions Table
     cursor.execute(adapt_schema('''
