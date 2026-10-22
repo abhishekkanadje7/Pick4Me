@@ -203,7 +203,7 @@
       <h3 style="font-size: 1.2rem; margin: 0;">
         🏪 Stage 1: Store Pickup & Shopkeeper Payout
       </h3>
-      {% if order.shop_payment_status == 'Released_To_Shop' %}
+      {% if order.shop_payment_status == 'Released_To_Shop' or order.status == 'Completed' %}
         <span class="badge badge-completed">✓ ₹{{ "%.2f"|format(order.product_amount) }} Paid to Shopkeeper</span>
       {% else %}
         <span class="badge badge-pending">Pending Pickup</span>
@@ -215,9 +215,9 @@
       {% if order.shop_phone %}&bull; Phone: {{ order.shop_phone }}{% endif %}
     </p>
 
-    {% if order.shop_payment_status == 'Released_To_Shop' %}
+    {% if order.shop_payment_status == 'Released_To_Shop' or order.status == 'Completed' %}
       <div style="background: #ECFDF5; border: 1px solid #A7F3D0; padding: 1rem; border-radius: var(--radius-sm); font-size: 0.88rem; color: #065F46;">
-        ✓ <strong>Items Picked Up!</strong> ₹{{ "%.2f"|format(order.product_amount) }} has been automatically transferred to the Shopkeeper's Wallet balance.
+        ✓ <strong>Items Picked Up & Paid!</strong> ₹{{ "%.2f"|format(order.product_amount) }} has been automatically transferred into the Shopkeeper's Wallet balance.
       </div>
     {% else %}
       {% if is_shop_owner or is_commuter_b or is_admin %}
@@ -258,12 +258,24 @@
 
     {% if order.status == 'Completed' %}
       <div style="background: #ECFDF5; border: 1px solid #A7F3D0; padding: 1.25rem; border-radius: var(--radius-sm); font-size: 0.9rem; color: #065F46;">
-        <div style="font-weight: 800; font-size: 1.05rem; margin-bottom: 0.35rem;">🎉 Order Successfully Completed!</div>
-        <div>
-          Total Reward Released to Commuter: <strong>₹{{ "%.2f"|format(order.final_payout or order.delivery_fee) }}</strong>
-          {% if order.speed_bonus > 0 %}
-            <span class="badge badge-completed" style="margin-left: 0.5rem;">+₹10 Speed Bonus</span>
-          {% endif %}
+        <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 0.5rem;">🎉 Order Successfully Completed & Settled!</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 0.75rem; background: #FFFFFF; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid #A7F3D0;">
+          <div>
+            <div style="font-size: 0.78rem; color: #047857; font-weight: 700; text-transform: uppercase;">🏪 Shopkeeper / Store Payout:</div>
+            <div style="font-size: 1.3rem; font-weight: 800; color: #065F46; margin-top: 0.2rem;">
+              ₹{{ "%.2f"|format(order.product_amount) }}
+              <span class="badge badge-completed" style="font-size: 0.68rem; margin-left: 0.35rem;">✓ Credited to Store Wallet</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 0.78rem; color: #047857; font-weight: 700; text-transform: uppercase;">🚴 Commuter / Deliverer Reward:</div>
+            <div style="font-size: 1.3rem; font-weight: 800; color: #065F46; margin-top: 0.2rem;">
+              ₹{{ "%.2f"|format(order.final_payout or order.delivery_fee) }}
+              {% if order.speed_bonus > 0 %}
+                <span class="badge badge-completed" style="font-size: 0.68rem; margin-left: 0.35rem;">+₹10 Speed Bonus</span>
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
 

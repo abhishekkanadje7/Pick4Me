@@ -402,7 +402,34 @@ def init_db():
             ''', (generate_password_hash('Abhi*2007', method='pbkdf2:sha256'),))
         conn.commit()
     except Exception as e:
-        print(f"[Pick4Me Admin Setup Notice] {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+    # 8. Reconcile Completed Orders: Ensure all shopkeepers have their product payments credited
+    try:
+        cursor.execute('''
+            SELECT o.id, o.product_amount, s.owner_id
+            FROM orders o
+            JOIN shops s ON o.shop_id = s.id
+            WHERE o.status = 'Completed' AND (o.shop_payment_status != 'Released_To_Shop' OR o.shop_payment_status IS NULL)
+        ''')
+        unpaid_orders = cursor.fetchall()
+        for ord_row in unpaid_orders:
+            ord_id = ord_row[0]
+            prod_amt = float(ord_row[1] or 0.0)
+            owner_id = ord_row[2]
+            if owner_id and prod_amt > 0:
+                cursor.execute('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', (prod_amt, owner_id))
+                cursor.execute('''
+                    INSERT INTO wallet_transactions (user_id, order_id, amount, type, description)
+                    VALUES (?, ?, ?, 'credit_product_sale', ?)
+                ''', (owner_id, ord_id, prod_amt, f"Product Sale for Completed Order #ORD-{ord_id}"))
+                cursor.execute("UPDATE orders SET shop_payment_status = 'Released_To_Shop' WHERE id = ?", (ord_id,))
+        conn.commit()
+    except Exception as e:
+        print(f"[Pick4Me Sync Notice] {e}")
         try:
             conn.rollback()
         except Exception:

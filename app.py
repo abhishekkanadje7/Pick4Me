@@ -839,9 +839,10 @@ def verify_delivery_otp(id):
 
     conn = get_db_connection()
     order = conn.execute('''
-        SELECT o.*, u.name as customer_name
+        SELECT o.*, u.name as customer_name, s.owner_id as shop_owner_id, s.shop_name
         FROM orders o
         JOIN users u ON o.customer_id = u.id
+        LEFT JOIN shops s ON o.shop_id = s.id
         WHERE o.id = ?
     ''', (id,)).fetchone()
 
@@ -867,10 +868,6 @@ def verify_delivery_otp(id):
     # --------------------------------------------------------------------------
     # ⏱️ SPEED BONUS & DELAY PENALTY ALGORITHM (Viva Highlight)
     # --------------------------------------------------------------------------
-    # - If delivered early (<= 65% of target SLA): +₹10.0 speed bonus awarded!
-    # - If delivered significantly late (> 140% of target SLA): -₹10.0 delay penalty!
-    # - Guaranteed Minimum Commuter Payout: ₹10.0 (commuter is never paid less than ₹10)
-    # --------------------------------------------------------------------------
     target_sla = order['target_duration_mins']
     speed_bonus = 0.0
     delay_penalty = 0.0
@@ -885,18 +882,43 @@ def verify_delivery_otp(id):
     commuter_id = order['commuter_id']
 
     cursor = conn.cursor()
-    # 1. Update Order Status
+    # 1. Update Order Status & Financial Settlements
     cursor.execute('''
         UPDATE orders
         SET status = 'Completed', payment_status = 'Fully_Settled',
             delivery_payment_status = 'Released_To_Commuter',
+            shop_payment_status = 'Released_To_Shop',
             delivered_at = CURRENT_TIMESTAMP, actual_duration_mins = ?,
             speed_bonus = ?, delay_penalty = ?, final_payout = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
     ''', (actual_mins, speed_bonus, delay_penalty, final_delivery_reward, id))
 
-    # 2. AUTO-PAYOUT TO CUSTOMER B: Credit Delivery Reward directly to Commuter's Wallet!
+    # 2. AUTO-PAYOUT TO SHOPKEEPER (SHOP OWNER):
+    # Ensure Shopkeeper receives full product sale payment into their Store Wallet!
+    item_cost = float(order['product_amount'] or 0.0)
+    shop_owner_id = order['shop_owner_id'] if 'shop_owner_id' in order.keys() else None
+
+    if order['order_type'] == 'custom_request':
+        # Custom Errand: Commuter bought item out-of-pocket, reimburse item cost to commuter
+        if item_cost > 0 and order['shop_payment_status'] != 'Released_To_Shop':
+            cursor.execute('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', (item_cost, commuter_id))
+            cursor.execute('''
+                INSERT INTO wallet_transactions (user_id, order_id, amount, type, description)
+                VALUES (?, ?, ?, 'credit_reimbursement', ?)
+            ''', (commuter_id, id, item_cost, f"Item Cost Reimbursement for Custom Errand #ORD-{id}"))
+            cursor.execute("UPDATE orders SET shop_payment_status = 'Reimbursed_To_Commuter' WHERE id = ?", (id,))
+    else:
+        # Standard Store Order: Credit Product Amount directly to Shop Owner's Wallet
+        if shop_owner_id and item_cost > 0 and order['shop_payment_status'] != 'Released_To_Shop':
+            cursor.execute('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', (item_cost, shop_owner_id))
+            cursor.execute('''
+                INSERT INTO wallet_transactions (user_id, order_id, amount, type, description)
+                VALUES (?, ?, ?, 'credit_product_sale', ?)
+            ''', (shop_owner_id, id, item_cost, f"Product Sale for Order #ORD-{id} (Auto-released upon delivery)"))
+
+    # 3. AUTO-PAYOUT TO COMMUTER (DELIVERER):
+    # Credit Delivery Reward (+ Speed Bonus) directly to Commuter's Wallet!
     cursor.execute('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', (final_delivery_reward, commuter_id))
 
     payout_note = f"Delivery Reward for Order #ORD-{id}"
@@ -914,7 +936,7 @@ def verify_delivery_otp(id):
     conn.close()
 
     bonus_msg = f" (+₹10 Speed Bonus earned in {actual_mins}m!)" if speed_bonus > 0 else ""
-    flash(f'🎉 OTP Verified! ₹{final_delivery_reward:.2f}{bonus_msg} delivery reward credited to your Commuter Wallet!', 'success')
+    flash(f'🎉 Handover OTP Verified! ₹{final_delivery_reward:.2f}{bonus_msg} delivery reward credited to your Commuter Wallet!', 'success')
     return redirect(url_for('wallet_dashboard'))
 
 # ==========================================
@@ -1062,8 +1084,8 @@ def shopper_dashboard():
     shop = conn.execute('SELECT * FROM shops WHERE owner_id = ?', (user_id,)).fetchone()
     products_count = conn.execute('SELECT COUNT(*) FROM products WHERE shop_id = ?', (shop['id'],)).fetchone()[0] if shop else 0
 
-    # Store pickups waiting for handover (Stage 1)
-    pending_pickups = []
+    recent_sales = []
+    total_sales_amount = 0.0
     if shop:
         pending_pickups = conn.execute('''
             SELECT o.*, u.name as customer_name, cm.name as commuter_name, cm.phone as commuter_phone
@@ -1074,6 +1096,17 @@ def shopper_dashboard():
             ORDER BY o.created_at DESC
         ''', (shop['id'],)).fetchall()
 
+        recent_sales = conn.execute('''
+            SELECT o.*, u.name as customer_name, cm.name as commuter_name, cm.phone as commuter_phone
+            FROM orders o
+            JOIN users u ON o.customer_id = u.id
+            LEFT JOIN users cm ON o.commuter_id = cm.id
+            WHERE o.shop_id = ? AND (o.shop_payment_status = 'Released_To_Shop' OR o.status = 'Completed')
+            ORDER BY o.updated_at DESC
+            LIMIT 10
+        ''', (shop['id'],)).fetchall()
+        total_sales_amount = sum(float(s['product_amount'] or 0.0) for s in recent_sales)
+
     user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
     conn.close()
 
@@ -1082,7 +1115,9 @@ def shopper_dashboard():
         user=user,
         shop=shop,
         products_count=products_count,
-        pending_pickups=pending_pickups
+        pending_pickups=pending_pickups,
+        recent_sales=recent_sales,
+        total_sales_amount=total_sales_amount
     )
 
 @app.route('/merchant/shop', methods=['GET', 'POST'])

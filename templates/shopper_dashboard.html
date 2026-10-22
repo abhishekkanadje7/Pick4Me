@@ -86,6 +86,63 @@
     {% endif %}
   </div>
 
+  <!-- STAGE 1 SETTLED: COMPLETED STORE SALES & ESCROW PAYOUTS -->
+  <div class="card" style="padding: 1.75rem; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+      <div>
+        <h3 style="font-size: 1.25rem; margin: 0;">💰 Completed Sales & Settled Earnings</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0.2rem 0 0;">
+          All product sales released directly from platform escrow into your Store Wallet balance.
+        </p>
+      </div>
+      <div style="text-align: right;">
+        <span style="font-size: 0.82rem; color: var(--text-muted);">Total Settled Sales:</span>
+        <strong style="font-size: 1.2rem; color: var(--primary); margin-left: 0.25rem;">₹{{ "%.2f"|format(total_sales_amount or 0.0) }}</strong>
+      </div>
+    </div>
+
+    {% if recent_sales %}
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Items Sold</th>
+              <th>Customer</th>
+              <th>Deliverer</th>
+              <th>Amount Settled</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in recent_sales %}
+              <tr>
+                <td><strong>#ORD-{{ s.id }}</strong></td>
+                <td>{{ s.items_summary }}</td>
+                <td>{{ s.customer_name }}</td>
+                <td>{{ s.commuter_name or 'Peer Commuter' }}</td>
+                <td>
+                  <strong style="color: var(--primary); font-size: 1.1rem;">+₹{{ "%.2f"|format(s.product_amount) }}</strong>
+                </td>
+                <td>
+                  <span class="badge badge-completed">✓ Released to Wallet</span>
+                </td>
+                <td>
+                  <a href="{{ url_for('order_details', id=s.id) }}" class="btn btn-sm btn-outline-primary">Receipt</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+        <p>No completed sales yet. When students order your items, settled product payments will appear here!</p>
+      </div>
+    {% endif %}
+  </div>
+
   {% else %}
   <!-- Store Setup Prompt -->
   <div class="card text-center" style="padding: 3.5rem 1.5rem;">
